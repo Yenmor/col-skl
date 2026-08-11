@@ -1,0 +1,15 @@
+{
+  "schema_version": "0.1",
+  "identity": {
+    "alias": "李学长",
+    "school": "山西大学",
+    "college": "数学科学学院",
+    "major": "统计学",
+    "year_graduated": 2022,
+    "next_step": "浙江大学 数据科学方向直博"
+  },
+  "source_context": {
+    "type": "manual",
+    "added_at": "2026-08-12"
+  }
+}

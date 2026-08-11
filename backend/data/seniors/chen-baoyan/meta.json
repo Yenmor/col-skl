@@ -1,0 +1,15 @@
+{
+  "schema_version": "0.1",
+  "identity": {
+    "alias": "陈学姐",
+    "school": "山西大学",
+    "college": "计算机与信息技术学院",
+    "major": "软件工程",
+    "year_graduated": 2024,
+    "next_step": "中科院计算所 硕士"
+  },
+  "source_context": {
+    "type": "manual",
+    "added_at": "2026-08-12"
+  }
+}

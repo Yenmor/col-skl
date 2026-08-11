@@ -1,0 +1,15 @@
+{
+  "schema_version": "0.1",
+  "identity": {
+    "alias": "张学长",
+    "school": "山西大学",
+    "college": "自动化与软件学院",
+    "major": "软件工程",
+    "year_graduated": 2023,
+    "next_step": "字节跳动 后端工程师"
+  },
+  "source_context": {
+    "type": "manual",
+    "added_at": "2026-08-12"
+  }
+}

@@ -1,0 +1,22 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: skill-hub-backend
+  servlet:
+    multipart:
+      max-file-size: 30MB
+      max-request-size: 30MB
+  datasource:
+    url: jdbc:sqlite:${user.dir}/data/skillhub.db
+    driver-class-name: org.sqlite.JDBC
+  sql:
+    init:
+      mode: never
+
+skillhub:
+  seniors-dir: ${user.dir}/data/seniors
+  allow-zip-upload: true
