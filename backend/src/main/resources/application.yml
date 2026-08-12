@@ -20,3 +20,12 @@ spring:
 skillhub:
   seniors-dir: ${user.dir}/data/seniors
   allow-zip-upload: true
+  llm:
+    provider: ${LLM_PROVIDER:mock}
+    timeout-seconds: ${LLM_TIMEOUT_SECONDS:60}
+    fallback-to-mock: ${LLM_FALLBACK_TO_MOCK:false}
+    deepseek:
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}
+      api-key: ${DEEPSEEK_API_KEY:}
+      model: ${DEEPSEEK_MODEL:deepseek-chat}
+      max-tokens: ${DEEPSEEK_MAX_TOKENS:900}

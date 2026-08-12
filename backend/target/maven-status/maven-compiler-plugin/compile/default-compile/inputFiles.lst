@@ -1,4 +1,6 @@
 E:\yenmor-home\大学生成长Skill共创场\backend\src\main\java\com\skillhub\config\InitRunner.java
+E:\yenmor-home\大学生成长Skill共创场\backend\src\main\java\com\skillhub\config\LlmClientConfig.java
+E:\yenmor-home\大学生成长Skill共创场\backend\src\main\java\com\skillhub\config\LlmProperties.java
 E:\yenmor-home\大学生成长Skill共创场\backend\src\main\java\com\skillhub\config\WebConfig.java
 E:\yenmor-home\大学生成长Skill共创场\backend\src\main\java\com\skillhub\controller\ChatController.java
 E:\yenmor-home\大学生成长Skill共创场\backend\src\main\java\com\skillhub\controller\CommunityController.java
@@ -17,6 +19,9 @@ E:\yenmor-home\大学生成长Skill共创场\backend\src\main\java\com\skillhub\
 E:\yenmor-home\大学生成长Skill共创场\backend\src\main\java\com\skillhub\repo\sqlite\SqliteSchema.java
 E:\yenmor-home\大学生成长Skill共创场\backend\src\main\java\com\skillhub\repo\sqlite\SqliteSeniorSkillRepository.java
 E:\yenmor-home\大学生成长Skill共创场\backend\src\main\java\com\skillhub\service\ChatOrchestrator.java
+E:\yenmor-home\大学生成长Skill共创场\backend\src\main\java\com\skillhub\service\llm\DeepSeekLlmClient.java
+E:\yenmor-home\大学生成长Skill共创场\backend\src\main\java\com\skillhub\service\llm\LlmClient.java
+E:\yenmor-home\大学生成长Skill共创场\backend\src\main\java\com\skillhub\service\llm\MockLlmClient.java
 E:\yenmor-home\大学生成长Skill共创场\backend\src\main\java\com\skillhub\service\SeniorIngestService.java
 E:\yenmor-home\大学生成长Skill共创场\backend\src\main\java\com\skillhub\service\SeniorReader.java
 E:\yenmor-home\大学生成长Skill共创场\backend\src\main\java\com\skillhub\SkillHubApplication.java

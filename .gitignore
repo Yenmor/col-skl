@@ -1,0 +1,22 @@
+# Local secrets and environment files
+.env
+.env.*
+!.env.example
+**/application-local.yml
+**/application-prod.yml
+**/secrets/
+**/*.key
+**/*.pem
+
+# Generated dependencies and builds
+**/node_modules/
+**/target/
+**/dist/
+**/*.class
+**/*.jar
+**/*.war
+
+# Runtime databases and logs
+**/data/*.db
+**/data/*.db-*
+**/*.log

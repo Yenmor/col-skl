@@ -1,7 +1,7 @@
 import axios from 'axios'
 import type { CommunityPost } from '../types'
 
-const BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8080'
+const BASE = import.meta.env.VITE_API_BASE ?? ''
 const FALLBACK: CommunityPost[] = [
   { id: 'p1', authorName: '一个还在摸索的人', authorAvatar: '', title: '大二下才开始准备保研，真的来得及吗？', excerpt: '我的绩点不算高，竞赛也只有一项，最近才开始认真了解推免。把我这周查到的信息整理了一下，希望给同样焦虑的人一点参考。', body: '', coverColor: '#fde0e6', likeCount: 128, commentCount: 24, createdAt: '2026-08-11' },
   { id: 'p2', authorName: '自软院某不知名选手', authorAvatar: '', title: '我们学院参加竞赛的一些真实情况', excerpt: '自动化与软件学院和计信院虽然都在计算机大类，但参加竞赛的组织、老师支持、校区都不太一样。', body: '', coverColor: '#dceafd', likeCount: 86, commentCount: 13, createdAt: '2026-08-10' },

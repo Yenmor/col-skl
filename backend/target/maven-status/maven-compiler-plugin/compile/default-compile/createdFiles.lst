@@ -1,8 +1,10 @@
 com\skillhub\repo\CommunityRepository.class
+com\skillhub\service\llm\DeepSeekLlmClient.class
 com\skillhub\repo\ChatRepository.class
 com\skillhub\controller\SeniorController.class
 com\skillhub\controller\CommunityController$CreatePostRequest.class
 com\skillhub\service\SeniorReader$SeniorCandidate.class
+com\skillhub\config\LlmProperties.class
 com\skillhub\dto\ChatRequest.class
 com\skillhub\service\ChatOrchestrator$ScoredCandidate.class
 com\skillhub\config\InitRunner.class
@@ -20,8 +22,12 @@ com\skillhub\dto\ChatResponse$Answer.class
 com\skillhub\repo\sqlite\SqliteCommunityRepository.class
 com\skillhub\model\SeniorSkill.class
 com\skillhub\repo\sqlite\SqliteChatRepository.class
+com\skillhub\config\LlmProperties$DeepSeek.class
 com\skillhub\controller\CommunityController.class
+com\skillhub\service\llm\MockLlmClient.class
 com\skillhub\model\CommunityPost.class
+com\skillhub\config\LlmClientConfig.class
+com\skillhub\service\llm\LlmClient.class
 com\skillhub\SkillHubApplication.class
 com\skillhub\model\ChatMessageEntity.class
 com\skillhub\model\SeniorSkillDetail.class
