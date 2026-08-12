@@ -20,3 +20,8 @@
 **/data/*.db
 **/data/*.db-*
 **/*.log
+
+# IDE and test artifacts
+.idea/
+.playwright-cli/
+output/

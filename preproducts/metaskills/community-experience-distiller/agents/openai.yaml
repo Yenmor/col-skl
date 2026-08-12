@@ -1,0 +1,4 @@
+interface:
+  display_name: "社区经验 Skill 蒸馏器"
+  short_description: "将社区发言重组为证据片段并蒸馏成可审核的学长 Skill"
+  default_prompt: "Use $community-experience-distiller to turn this user activity JSON into a reviewable campus-experience Skill."

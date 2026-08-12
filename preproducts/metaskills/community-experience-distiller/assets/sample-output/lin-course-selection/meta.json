@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "skill_id": "lin-course-selection",
+  "name": "林学长 · 计算机选课避坑",
+  "identity": {
+    "user_id": "u_lin",
+    "school": "示例大学",
+    "college": "计算机学院",
+    "major": "软件工程",
+    "year_graduated": "2025"
+  },
+  "lifecycle": {
+    "version": "v1",
+    "status": "draft",
+    "generated_at": "2026-08-12T07:42:48.631369+00:00"
+  },
+  "review": {
+    "author_confirmed": false,
+    "status": "draft",
+    "confirmed_at": null,
+    "confirmed_by": null
+  },
+  "maturity": {
+    "coverage": 3,
+    "repeatability": 3,
+    "boundaries": 3,
+    "evidence_quality": 3,
+    "total": 12,
+    "decision": "full_skill",
+    "rationale": "三个独立讨论覆盖升学、课程负担和求职目标，包含流程、条件判断、采纳反馈和时效边界"
+  }
+}

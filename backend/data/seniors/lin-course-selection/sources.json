@@ -1,0 +1,43 @@
+{
+  "skill_id": "lin-course-selection",
+  "version": "v1",
+  "fragment_ids": [
+    "frag_0a25484db2",
+    "frag_b7f73217a0",
+    "frag_e5b3e78ade"
+  ],
+  "fragments": [
+    {
+      "fragment_id": "frag_0a25484db2",
+      "thread_id": "post_course_2",
+      "source_message_ids": [
+        "post_course_2",
+        "c_course_2",
+        "r_course_3"
+      ],
+      "title": "课程名字看起来很水，实际会不会很难"
+    },
+    {
+      "fragment_id": "frag_b7f73217a0",
+      "thread_id": "post_course_1",
+      "source_message_ids": [
+        "post_course_1",
+        "c_course_1",
+        "r_course_1",
+        "r_course_2"
+      ],
+      "title": "大二方向课到底怎么选"
+    },
+    {
+      "fragment_id": "frag_e5b3e78ade",
+      "thread_id": "post_course_3",
+      "source_message_ids": [
+        "post_course_3",
+        "c_course_3",
+        "r_course_4",
+        "r_course_5"
+      ],
+      "title": "准备找工作，选理论课还是项目课"
+    }
+  ]
+}

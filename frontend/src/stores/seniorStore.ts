@@ -1,24 +1,27 @@
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
-import type { SeniorSkill } from '../types'
-import { fetchSeniors } from '../services/seniorService'
+import { defineStore } from 'pinia';
+import { ref } from 'vue';
+import { seniorStoreMock } from '../services/seniorServiceMock';
+import type { SeniorSkill } from '../types/index';
 
 export const useSeniorStore = defineStore('senior', () => {
-  const items = ref<SeniorSkill[]>([])
-  const loading = ref(false)
-  const selectedDomain = ref('全部')
-  const selectedSchool = ref('全部')
-
-  const schools = computed(() => [...new Set(items.value.map(item => item.school))])
+  const items = ref<SeniorSkill[]>([]);
+  const loading = ref(false);
+  const error = ref<string | null>(null);
+  const selectedDomain = ref<string>('');
+  const selectedSchool = ref<string>('');
 
   async function load() {
-    loading.value = true
-    items.value = await fetchSeniors(
-      selectedDomain.value === '全部' ? undefined : selectedDomain.value,
-      selectedSchool.value === '全部' ? undefined : selectedSchool.value,
-    )
-    loading.value = false
+    loading.value = true;
+    error.value = null;
+    try {
+      items.value = await seniorStoreMock.list();
+    } catch (e) {
+      error.value = (e as Error).message;
+      items.value = [];
+    } finally {
+      loading.value = false;
+    }
   }
 
-  return { items, loading, selectedDomain, selectedSchool, schools, load }
-})
+  return { items, loading, error, selectedDomain, selectedSchool, load };
+});

@@ -5,12 +5,15 @@ import com.skillhub.dto.ChatResponse;
 import com.skillhub.model.ChatMessageEntity;
 import com.skillhub.repo.ChatRepository;
 import com.skillhub.service.ChatOrchestrator;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,7 +29,7 @@ public class ChatController {
     }
 
     @PostMapping
-    public ChatResponse chat(@RequestBody ChatRequest req) {
+    public ResponseEntity<ChatResponse> chat(@RequestBody ChatRequest req) {
         String sessionId = (req.getSessionId() == null || req.getSessionId().isBlank())
             ? UUID.randomUUID().toString() : req.getSessionId();
 
@@ -54,6 +57,11 @@ public class ChatController {
                 a.year(), a.content()
             )).toList();
 
-        return new ChatResponse(sessionId, mapped);
+        ChatResponse body = new ChatResponse(sessionId, mapped);
+        return ResponseEntity.ok()
+            .header("Deprecation", "true")
+            .header("Sunset", DateTimeFormatter.ISO_DATE.format(LocalDate.now().plusDays(30)))
+            .header("Link", "</api/v1/chat>; rel=\"successor-version\"")
+            .body(body);
     }
 }

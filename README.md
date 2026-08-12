@@ -41,18 +41,60 @@ seniors/<id>/
 | 持久 | SQLite（开发） / MySQL（生产） via Repository 抽象 |
 | LLM | 默认 mock；预制接口可换 Anthropic Claude / OpenAI |
 
-## 跑
+## 开发与构建（Windows）
 
-后端：
-```bash
+项目按两个终端启动：前端 `5173`，后端 `8080`。首次运行先安装前端依赖；后端 Maven 使用 IntelliJ 自带版本。
+
+### 1. 启动后端
+
+在 PowerShell 终端执行：
+
+```powershell
 cd backend
-export JAVA_HOME=C:/Users/17551/.jdks/ms-21.0.9
-mvn spring-boot:run
+$env:JAVA_HOME = 'C:\Users\17551\.jdks\ms-21.0.9'
+$env:Path = "$env:JAVA_HOME\bin;$env:Path"
+$env:MAVEN_OPTS = '-Dfile.encoding=UTF-8'
+$mvn = 'C:\Program Files\JetBrains\IntelliJ IDEA 2025.2.5\plugins\maven\lib\maven3\bin\mvn.cmd'
+& $mvn test
+& $mvn spring-boot:run
 ```
 
-前端：
-```bash
+看到 `Netty started on port 8080` 后，后端才算启动完成。数据库会自动创建在 `backend/data/skillhub.db`。
+
+### 2. 启动前端
+
+打开第二个 PowerShell 终端：
+
+```powershell
+chcp 65001 > $null
+$OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+[Console]::OutputEncoding = $OutputEncoding
 cd frontend
-npm install
-npm run dev
+npm install       # 仅首次运行需要
+npm run dev -- --host 0.0.0.0
 ```
+
+浏览器访问 <http://localhost:5173>。Vite 会把 `/api` 请求代理到 `http://localhost:8080`。
+
+### 构建与测试
+
+```powershell
+# 前端：类型检查 + Vite 生产构建
+cd frontend
+npm run build
+
+# 后端：编译并运行 JUnit 测试
+cd ..\backend
+$env:JAVA_HOME = 'C:\Users\17551\.jdks\ms-21.0.9'
+$env:Path = "$env:JAVA_HOME\bin;$env:Path"
+& 'C:\Program Files\JetBrains\IntelliJ IDEA 2025.2.5\plugins\maven\lib\maven3\bin\mvn.cmd' test
+```
+
+前端没有单独的 lint 脚本；`npm run build` 中的 `vue-tsc -b` 是当前类型检查入口。后端当前只有 `src/test/` 下的 JUnit smoke test。
+
+### 使用 IntelliJ IDEA 启动后端
+
+- Project SDK 选择 `ms-21`（JDK 21），Language level 设为 17；不要使用默认 JDK 8 或 JDK 25。
+- Maven Runner 的 JRE 也选择 `ms-21`，Maven home 可使用 Bundled Maven。
+- 若 IDEA 控制台中文仍乱码，在 Run Configuration 的 VM options 加 `-Dfile.encoding=UTF-8`。
+- `java.lang.ExceptionInInitializerError` / `com.sun.tools.javac.code.TypeTag :: UNKNOWN` 通常是 IDEA 使用 JDK 25 与当前 Lombok 版本不匹配；切回 JDK 21 后重新加载 Maven 项目并执行 `Build > Rebuild Project`。

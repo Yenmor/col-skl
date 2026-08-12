@@ -1,0 +1,114 @@
+{
+  "export_version": "1.0",
+  "exported_at": "2026-08-12T12:00:00+08:00",
+  "target_user": {
+    "id": "u_lin",
+    "display_name": "林学长",
+    "profile": {
+      "school": "示例大学",
+      "college": "计算机学院",
+      "major": "软件工程",
+      "year_graduated": "2025"
+    },
+    "consent": {
+      "distillation_allowed": true,
+      "publication_allowed": false,
+      "confirmed_at": null
+    }
+  },
+  "posts": [
+    {
+      "id": "post_course_1",
+      "title": "大二方向课到底怎么选",
+      "body": "我以后可能保研，也想留一点时间做项目，选课时应该优先看什么？",
+      "author": {"id": "u_a", "display_name": "同学A"},
+      "created_at": "2026-03-01T09:00:00+08:00",
+      "tags": ["选课", "软件工程"],
+      "comments": [
+        {
+          "id": "c_course_1",
+          "body": "先别按课程名字选。先确认你是保研、就业还是探索方向，再把本学期核心课和每周能投入的时间列出来。保研优先看成绩稳定性，想做项目再留一门项目型课。",
+          "author": {"id": "u_lin", "display_name": "林学长"},
+          "created_at": "2026-03-01T10:00:00+08:00",
+          "replies": [
+            {
+              "id": "r_course_1",
+              "body": "我这学期已有四门考试课，每周最多再拿五小时。",
+              "author": {"id": "u_a", "display_name": "同学A"},
+              "created_at": "2026-03-01T10:20:00+08:00",
+              "reply_to_id": "c_course_1",
+              "replies": [
+                {
+                  "id": "r_course_2",
+                  "body": "这种情况下最多加一门项目型课。先向上届同学确认平时作业和组队要求；如果每周稳定超过五小时，就换成考核更确定的课程。",
+                  "author": {"id": "u_lin", "display_name": "林学长"},
+                  "created_at": "2026-03-01T10:40:00+08:00",
+                  "reply_to_id": "r_course_1"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "post_course_2",
+      "title": "课程名字看起来很水，实际会不会很难",
+      "body": "有两门选修名字都很有趣，不知道怎么判断工作量。",
+      "author": {"id": "u_b", "display_name": "同学B"},
+      "created_at": "2026-04-05T08:30:00+08:00",
+      "tags": ["选课", "课程负担"],
+      "comments": [
+        {
+          "id": "c_course_2",
+          "body": "课程名基本不能反映负担。至少问三件事：考核构成、每周作业、是否强制组队。最好找同一位老师最近一年的学生，因为老师和考核方式换了，旧经验就可能失效。",
+          "author": {"id": "u_lin", "display_name": "林学长"},
+          "created_at": "2026-04-05T09:10:00+08:00",
+          "replies": [
+            {
+              "id": "r_course_3",
+              "body": "按这个方法问完，发现其中一门要每周汇报，我决定不选了。",
+              "author": {"id": "u_b", "display_name": "同学B"},
+              "created_at": "2026-04-06T10:00:00+08:00",
+              "reply_to_id": "c_course_2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "post_course_3",
+      "title": "准备找工作，选理论课还是项目课",
+      "body": "大二下想为后端实习做准备，两门课时间冲突。",
+      "author": {"id": "u_c", "display_name": "同学C"},
+      "created_at": "2026-05-10T14:00:00+08:00",
+      "tags": ["选课", "求职"],
+      "comments": [
+        {
+          "id": "c_course_3",
+          "body": "先看你现在缺的是基础还是可展示经历。如果数据结构和数据库还不扎实，优先补基础；基础已经够用但简历没有项目，再选能产出代码和报告的项目课。最后要形成一张表：课程、每周负担、产出、和目标的关系。",
+          "author": {"id": "u_lin", "display_name": "林学长"},
+          "created_at": "2026-05-10T14:30:00+08:00",
+          "replies": [
+            {
+              "id": "r_course_4",
+              "body": "如果培养方案下学期变化呢？",
+              "author": {"id": "u_c", "display_name": "同学C"},
+              "created_at": "2026-05-10T15:00:00+08:00",
+              "reply_to_id": "c_course_3",
+              "replies": [
+                {
+                  "id": "r_course_5",
+                  "body": "培养方案、开课老师和考核方式都要以当年教务通知为准。我只能给选择方法，不能替你确认下学期一定开哪门课。",
+                  "author": {"id": "u_lin", "display_name": "林学长"},
+                  "created_at": "2026-05-10T15:15:00+08:00",
+                  "reply_to_id": "r_course_4"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -2,7 +2,12 @@ import axios from 'axios'
 import type { CommunityPost } from '../types'
 
 const BASE = import.meta.env.VITE_API_BASE ?? ''
-const FALLBACK: CommunityPost[] = [
+
+/**
+ * 前端硬编码的 mock 兜底数据。仅在后端 `/api/community/posts` 失败 / 超时时返回。
+ * 数据库中实际不存在这些帖。
+ */
+const MOCK_POSTS: CommunityPost[] = [
   { id: 'p1', authorName: '一个还在摸索的人', authorAvatar: '', title: '大二下才开始准备保研，真的来得及吗？', excerpt: '我的绩点不算高，竞赛也只有一项，最近才开始认真了解推免。把我这周查到的信息整理了一下，希望给同样焦虑的人一点参考。', body: '', coverColor: '#fde0e6', likeCount: 128, commentCount: 24, createdAt: '2026-08-11' },
   { id: 'p2', authorName: '自软院某不知名选手', authorAvatar: '', title: '我们学院参加竞赛的一些真实情况', excerpt: '自动化与软件学院和计信院虽然都在计算机大类，但参加竞赛的组织、老师支持、校区都不太一样。', body: '', coverColor: '#dceafd', likeCount: 86, commentCount: 13, createdAt: '2026-08-10' },
   { id: 'p3', authorName: '刚进组的学弟', authorAvatar: '', title: '第一次联系导师，邮件到底怎么写？', excerpt: '看了很多模板，自己写的时候还是卡住了。后来问了几位学长，整理出一版不那么像群发的写法。', body: '', coverColor: '#e5f4dc', likeCount: 59, commentCount: 8, createdAt: '2026-08-09' },
@@ -12,9 +17,9 @@ const FALLBACK: CommunityPost[] = [
 export async function fetchPosts(): Promise<CommunityPost[]> {
   try {
     const res = await axios.get<{ items: CommunityPost[] }>(`${BASE}/api/community/posts`)
-    return res.data.items.length ? res.data.items : FALLBACK
+    return res.data.items.length ? res.data.items : MOCK_POSTS
   } catch {
-    return FALLBACK
+    return MOCK_POSTS
   }
 }
 

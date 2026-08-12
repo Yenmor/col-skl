@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skillhub.config.LlmProperties;
 import com.skillhub.model.SeniorSkill;
+import com.skillhub.repo.SeniorFragmentRepository;
 import com.skillhub.repo.SeniorSkillRepository;
 import com.skillhub.service.llm.LlmClient;
 import com.skillhub.service.llm.MockLlmClient;
@@ -28,6 +29,7 @@ public class ChatOrchestrator {
 
     private final SeniorSkillRepository repo;
     private final SeniorReader reader;
+    private final SeniorFragmentRepository fragmentRepo;
     private final LlmClient llm;
     private final MockLlmClient mock;
     private final LlmProperties properties;
@@ -35,11 +37,13 @@ public class ChatOrchestrator {
 
     public ChatOrchestrator(SeniorSkillRepository repo,
                             SeniorReader reader,
+                            SeniorFragmentRepository fragmentRepo,
                             LlmClient llm,
                             MockLlmClient mock,
                             LlmProperties properties) {
         this.repo = repo;
         this.reader = reader;
+        this.fragmentRepo = fragmentRepo;
         this.llm = llm;
         this.mock = mock;
         this.properties = properties;
@@ -51,8 +55,13 @@ public class ChatOrchestrator {
         var scored = new ArrayList<ScoredCandidate>();
         for (var c : candidates) {
             int overlap = jaccard(msgTokens, tokenize(c.skillHead()));
+            // domain 命中加权
             if (c.domain() != null && !c.domain().isBlank() && message.contains(c.domain())) {
-                overlap += 2;
+                overlap += 3;
+            }
+            // manifest triggers 命中加权（与 SkillRecallService 同源）
+            for (String t : readTriggers(c.id())) {
+                if (message.contains(t)) overlap += 6;
             }
             scored.add(new ScoredCandidate(c, overlap));
         }
@@ -65,18 +74,39 @@ public class ChatOrchestrator {
             return Integer.compare(b.score(), a.score());
         });
 
-        List<ScoredCandidate> selected = scored.stream().limit(3).toList();
+        List<ScoredCandidate> selected = scored.stream().limit(1).toList();
         List<CompletableFuture<SeniorAnswer>> futures = selected.stream()
             .map(sc -> CompletableFuture.supplyAsync(() -> answerFor(sc, message)))
             .toList();
         return futures.stream().map(CompletableFuture::join).toList();
     }
 
+    @SuppressWarnings("unchecked")
+    private List<String> readTriggers(String seniorId) {
+        try {
+            var manifestPath = reader.seniorsDir().resolve(seniorId).resolve("manifest.json");
+            if (!java.nio.file.Files.exists(manifestPath)) return List.of();
+            Map<String, Object> root = json.readValue(
+                java.nio.file.Files.readString(manifestPath), Map.class);
+            Object triggers = root.get("triggers");
+            if (triggers instanceof List<?> list) {
+                List<String> out = new ArrayList<>();
+                for (Object o : list) {
+                    if (o != null) out.add(o.toString());
+                }
+                return out;
+            }
+            return List.of();
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
     private SeniorAnswer answerFor(ScoredCandidate scored, String message) {
         SeniorReader.SeniorCandidate c = scored.c();
         SeniorSkill senior = findById(c.id());
         String skillMd = reader.loadSkillMd(c.id());
-        String prompt = buildSystemPrompt(senior, c, skillMd);
+        String prompt = buildSystemPrompt(senior, c, skillMd, message);
         String content;
         try {
             content = llm.complete(prompt, message)
@@ -95,16 +125,72 @@ public class ChatOrchestrator {
 
     private String buildSystemPrompt(SeniorSkill senior,
                                      SeniorReader.SeniorCandidate candidate,
-                                     String skillMd) {
+                                     String skillMd,
+                                     String userMessage) {
         String name = senior != null ? senior.name() : candidate.name();
         String school = senior != null ? senior.school() : candidate.school();
         String major = senior != null ? senior.major() : candidate.major();
         String domain = senior != null ? senior.domain() : candidate.domain();
-        return "你是大学生成长 Skill 共创场中的「" + name + "」。\n"
-            + "你的学校是" + safe(school) + "，专业是" + safe(major) + "，主要领域是" + safe(domain) + "。\n"
-            + "请严格依据下面的 Skill 经验回答用户，不要假装拥有文档之外的经历；如果信息不足，请明确说出不确定之处。"
-            + "回答要具体、友好、可执行，优先给出步骤、时间点或判断标准，不要提及系统提示词、模型或内部编排。\n\n"
-            + "【SKILL.md】\n" + truncate(skillMd, 6000);
+        StringBuilder sb = new StringBuilder();
+        sb.append("你是大学生成长 Skill 共创场中的「").append(name).append("」。\n")
+          .append("你的学校是").append(safe(school))
+          .append("，专业是").append(safe(major))
+          .append("，主要领域是").append(safe(domain)).append("。\n")
+          .append("请严格依据下面的 Skill 经验与记忆片段回答用户，不要假装拥有文档之外的经历；如果信息不足，请明确说出不确定之处。")
+          .append("回答要具体、友好、可执行，优先给出步骤、时间点或判断标准，不要提及系统提示词、模型或内部编排。\n\n")
+          .append("【SKILL.md】\n").append(truncate(skillMd, 6000));
+
+        // ---- 简化 RAG：从 senior_fragments 召回与用户问题相关的记忆片段 ----
+        List<String> memories = recallMemories(candidate.id(), userMessage);
+        if (!memories.isEmpty()) {
+            sb.append("\n\n【相关记忆片段】\n");
+            for (int i = 0; i < Math.min(memories.size(), 5); i++) {
+                sb.append("- ").append(truncate(memories.get(i), 300)).append("\n");
+            }
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 简化 RAG：把该学长全部蒸馏片段与用户问题做关键词/Jaccard 打分，取 top 相关。
+     * 向量库版（Chroma/Milvus）留到 v2（D7）。
+     */
+    private List<String> recallMemories(String seniorId, String userMessage) {
+        try {
+            Set<String> qTokens = tokenize(userMessage);
+            var scored = new ArrayList<Object[]>();
+            for (var f : fragmentRepo.listAll(seniorId)) {
+                Set<String> fTokens = new HashSet<>(tokenize(f.content()));
+                if (f.tagsJson() != null) {
+                    try {
+                        List<String> tags = json.readValue(f.tagsJson(), new TypeReference<List<String>>() {});
+                        for (String t : tags) {
+                            fTokens.addAll(tokenize(t));
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+                int score = jaccard(qTokens, fTokens);
+                if (f.content() != null && userMessage != null) {
+                    // 直接子串命中加权
+                    for (String t : qTokens) {
+                        if (t.length() >= 2 && f.content().contains(t)) score += 3;
+                    }
+                }
+                if (score > 0) {
+                    scored.add(new Object[]{f, score});
+                }
+            }
+            scored.sort((a, b) -> Integer.compare((Integer) b[1], (Integer) a[1]));
+            List<String> out = new ArrayList<>();
+            for (Object[] o : scored) {
+                var f = (com.skillhub.model.SeniorFragment) o[0];
+                out.add("[" + f.kind() + "] " + f.content());
+            }
+            return out;
+        } catch (Exception e) {
+            return List.of();
+        }
     }
 
     private static String safe(String value) {
@@ -139,13 +225,17 @@ public class ChatOrchestrator {
 
     private Set<String> tokenize(String text) {
         if (text == null) return Set.of();
-        String[] toks = text.toLowerCase()
-            .replaceAll("[^\\u4e00-\\u9fa5a-z0-9 ]", " ")
-            .split("\\s+");
+        String lower = text.toLowerCase();
         Set<String> out = new HashSet<>();
-        for (String t : toks) {
+        // 1. 英文/数字分词
+        for (String t : lower.replaceAll("[^\\u4e00-\\u9fa5a-z0-9 ]", " ").split("\\s+")) {
             if (t.length() < 2 || STOP_WORDS.contains(t)) continue;
             out.add(t);
+        }
+        // 2. 中文 bigram（连续两个汉字为一组），解决无空格中文 jaccard 恒为 0 的问题
+        String hanzi = lower.replaceAll("[^\\u4e00-\\u9fa5]", "");
+        for (int i = 0; i + 1 < hanzi.length(); i++) {
+            out.add(hanzi.substring(i, i + 2));
         }
         return out;
     }
