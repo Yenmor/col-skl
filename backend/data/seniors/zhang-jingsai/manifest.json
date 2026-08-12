@@ -1,7 +1,10 @@
 {
-  "name": "张学长 · 竞赛组",
+  "name": "张学长 · 竞赛",
   "domain": "竞赛",
-  "tags": ["竞赛", "ACM", "数模", "互联网+"],
-  "avatar": "zhang.png",
-  "preview": "打过 ACM 银 + 数模国二，给节奏不给白皮书。"
+  "avatar": "zhang.svg",
+  "description": "打过 ACM 区域赛银、数模国二、互联网+ 省金。按年级给你排比赛，讲清组队和训练量。",
+  "triggers": ["竞赛", "ACM", "数模", "建模", "蓝桥杯", "组队", "刷题"],
+  "source": "manual",
+  "version": "v1",
+  "reviewStatus": "draft"
 }

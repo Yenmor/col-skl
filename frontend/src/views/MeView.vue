@@ -1,113 +1,133 @@
 <template>
-  <section class="me">
-    <h1>我</h1>
-    <div v-if="user" class="card">
-      <div class="row">
-        <span class="lbl">id</span>
-        <code class="val">{{ user.id }}</code>
-      </div>
-      <div class="row">
-        <span class="lbl">昵称</span>
-        <input v-model="newName" class="inp" />
-        <button @click="save" :disabled="saving" class="btn">保存</button>
-      </div>
-      <div class="row">
-        <span class="lbl">角色</span>
-        <span class="val">{{ user.role }}</span>
-      </div>
-      <div class="row">
-        <span class="lbl">注册时间</span>
-        <span class="val">{{ new Date(user.createdAt).toLocaleString('zh-CN') }}</span>
-      </div>
-    </div>
-    <div v-else-if="loading" class="loading">加载中…</div>
-    <div v-else class="empty">无法加载用户信息</div>
+  <div class="page-shell profile-page">
+    <TopBar />
+    <main class="profile-layout content-width" :class="{ focused: expandedId }" @keydown.esc="closeExpanded">
+      <header class="profile-header">
+        <div class="profile-person"><span>{{ displayName.slice(0, 1) }}</span><div><small>PERSONAL SKILLS / 2026</small><h1>{{ displayName }}的能力画像</h1><p>{{ profileMeta }}</p></div></div>
+        <div class="profile-total"><strong>{{ totalScore }}</strong><span>/ 100<br />综合掌握度</span></div>
+      </header>
 
-    <h2 style="margin-top: 24px">我的记忆</h2>
-    <button @click="loadMemories" class="btn">刷新</button>
-    <div v-if="memories.length === 0" class="empty">还没有记忆</div>
-    <div v-else class="memories">
-      <div v-for="m in memories" :key="m.memoryId" class="memory">
-        <h4>{{ m.title || '未命名' }}</h4>
-        <div class="tags">
-          <span v-for="t in m.tags" :key="t" class="tag">{{ t }}</span>
+      <section class="profile-axis-panel" aria-label="四个核心方向能力评分">
+        <div class="axis-scale" aria-hidden="true"><span>0</span><i /><span>50</span><i /><span>100</span></div>
+        <div class="axis-list">
+          <article
+            v-for="(domain, index) in skillDomains"
+            :key="domain.id"
+            class="profile-axis"
+            :data-axis-index="index"
+            :class="{ expanded: expandedId === domain.id, muted: expandedId && expandedId !== domain.id }"
+            :style="{ '--domain-color': domain.color, '--domain-ink': domain.ink, '--domain-tint': domain.tint, '--delay': `${index * 45}ms` }"
+          >
+            <button class="axis-main" type="button" :data-profile-axis="index" :aria-expanded="expandedId === domain.id" @click="toggle(domain.id)">
+              <span class="axis-glyph">{{ domain.glyph }}</span>
+              <span class="axis-name"><strong>{{ domain.name }}</strong><small>{{ domain.code }}</small></span>
+              <i class="axis-track"><span /><span /><span /><span /><span /></i>
+              <span class="axis-score">{{ scoreOf(domain.id) }}<small>%</small></span>
+              <ChevronDown :size="17" />
+            </button>
+            <div class="axis-detail">
+              <div>
+                <header><p>{{ domain.description }}</p><RouterLink :to="`/community?domain=${domain.name}`">进入社区 <ArrowUpRight :size="14" /></RouterLink></header>
+                <ul>
+                  <li v-for="branch in branchesOf(domain.id)" :key="branch.name">
+                    <span><strong>{{ branch.name }}</strong><small>{{ branch.note }}</small></span>
+                    <i><b :style="{ width: `${branch.score}%` }" /></i>
+                    <em>{{ branch.score }}</em>
+                  </li>
+                </ul>
+                <div v-if="metricsOf(domain.id).length" class="axis-metrics">
+                  <span v-for="m in metricsOf(domain.id)" :key="m">{{ m }}</span>
+                </div>
+              </div>
+            </div>
+          </article>
         </div>
-        <div class="time">{{ new Date(m.createdAt).toLocaleString('zh-CN') }}</div>
-      </div>
-    </div>
-  </section>
+      </section>
+
+      <footer class="profile-footer"><BadgeCheck :size="17" /><span>能力分数基于你的社区发帖与互动计算</span><RouterLink to="/seniors">查看我的 Skills <ArrowUpRight :size="15" /></RouterLink></footer>
+    </main>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { usersApi, memoriesApi } from '../services/api-v1';
-import type { UserDto, ChatMemoryDto } from '../types/api-v1';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { ArrowUpRight, BadgeCheck, ChevronDown } from '@lucide/vue'
+import { skillDomains, domainById, type DomainId } from '../domain'
+import TopBar from '../components/common/TopBar.vue'
+import { useAbilitySpaceStore } from '../stores/abilitySpace'
+import { usersApi } from '../services/api-v1'
+import { requestAbilityProfile } from '../services/abilityProfile'
 
-const user = ref<UserDto | null>(null);
-const newName = ref('');
-const saving = ref(false);
-const loading = ref(true);
-const memories = ref<ChatMemoryDto[]>([]);
+const abilitySpace = useAbilitySpaceStore()
+const { expandedId } = storeToRefs(abilitySpace)
 
-async function load() {
-  loading.value = true;
-  try {
-    const u = await usersApi.getMe();
-    user.value = u;
-    newName.value = u.displayName;
-  } catch {
-    user.value = null;
-  } finally {
-    loading.value = false;
-  }
+const displayName = ref('我')
+const profile = ref<AbilityProfile | null>(null)
+
+const totalScore = computed(() => profile.value?.total ?? 0)
+const profileMeta = computed(() => {
+  if (!profile.value) return '正在加载…'
+  const sum = profile.value.domains.reduce((a, d) => a + d.posts, 0)
+  return `参与了 ${sum} 条讨论`
+})
+
+interface AbilityProfile {
+  userId: string
+  total: number
+  domains: Array<{
+    id: string
+    name: string
+    score: number
+    posts: number
+    likes: number
+    comments: number
+    sitePosts: number
+    seniors: number
+    branches: Array<{ name: string; note: string; score: number }>
+  }>
 }
 
-async function save() {
-  if (!newName.value.trim()) return;
-  saving.value = true;
-  try {
-    user.value = await usersApi.patchMe({ displayName: newName.value.trim() });
-  } catch (e) {
-    alert('保存失败：' + (e as Error).message);
-  } finally {
-    saving.value = false;
-  }
+function scoreOf(id: string) {
+  return profile.value?.domains.find(d => d.id === id)?.score ?? domainById(id).score
 }
 
-async function loadMemories() {
-  try {
-    memories.value = await memoriesApi.listMine({ limit: 50 });
-  } catch (e) {
-    alert('加载失败：' + (e as Error).message);
-  }
+function branchesOf(id: string) {
+  const remote = profile.value?.domains.find(d => d.id === id)?.branches
+  if (remote && remote.length) return remote
+  return domainById(id).branches.map(b => ({ ...b }))
+}
+
+function metricsOf(id: string): string[] {
+  const d = profile.value?.domains.find(x => x.id === id)
+  if (!d) return []
+  return [
+    `${d.sitePosts} 条讨论`,
+    `${d.seniors} 位学长`,
+    `我发布 ${d.posts} 条 · 获 ${d.likes} 赞`,
+  ]
+}
+
+function toggle(id: DomainId) {
+  abilitySpace.toggleExpanded(id)
+}
+function closeExpanded() {
+  abilitySpace.closeExpanded()
+}
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') closeExpanded()
 }
 
 onMounted(async () => {
-  await load();
-  await loadMemories();
-});
+  abilitySpace.prepareProfile()
+  window.addEventListener('keydown', onKeydown)
+  try {
+    const [me, p] = await Promise.all([usersApi.getMe(), requestAbilityProfile()])
+    displayName.value = me.displayName ?? '我'
+    profile.value = p
+  } catch {
+    // 后端不可用时保持静态域数据兜底
+  }
+})
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 </script>
-
-<style scoped>
-.me { padding: 24px; max-width: 800px; margin: 0 auto; }
-h1 { color: var(--ink); margin: 0 0 16px; }
-.card { background: var(--surface); border-radius: 12px; padding: 16px; }
-.row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
-.row:last-child { border-bottom: none; }
-.lbl { width: 80px; color: var(--ink-2); font-size: 13px; }
-.val { color: var(--ink); }
-code.val { font-family: ui-monospace, monospace; font-size: 12px; }
-.inp { flex: 1; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--paper); color: var(--ink); }
-.btn { padding: 6px 14px; border-radius: 6px; background: var(--pink); color: white; border: none; cursor: pointer; }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.loading, .empty { padding: 20px; text-align: center; color: var(--ink-2); }
-.memories { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
-.memory { background: var(--surface); border-radius: 8px; padding: 12px; }
-.memory h4 { margin: 0 0 4px; color: var(--ink); }
-.tags { display: flex; gap: 4px; flex-wrap: wrap; }
-.tag { padding: 2px 6px; background: var(--surface-2); border-radius: 4px; font-size: 11px; color: var(--ink-2); }
-.time { color: var(--ink-2); font-size: 12px; margin-top: 4px; }
-@media (max-width: 720px) {
-  .me { padding: 16px; }
-}
-</style>

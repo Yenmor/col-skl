@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="山大学长头像">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e8f9ff"/>
+      <stop offset="1" stop-color="#dceafd"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" rx="20" fill="url(#bg)"/>
+  <circle cx="48" cy="40" r="20" fill="#47cfff" opacity="0.9"/>
+  <path d="M14 84 C20 62 34 54 48 54 C62 54 76 62 82 84 Z" fill="#0d6985"/>
+  <text x="48" y="47" text-anchor="middle" font-family="'PingFang SC','Microsoft YaHei',sans-serif" font-size="26" font-weight="700" fill="#ffffff">山</text>
+</svg>

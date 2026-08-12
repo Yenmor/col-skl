@@ -104,13 +104,16 @@ public class UserDistillController extends BaseController {
         try {
             Path dir = reader.seniorsDir().resolve(newId);
             Files.createDirectories(dir);
+            String displayName = body.displayName() == null || body.displayName().isBlank() ? "学长" : body.displayName().trim();
+            String domain = normalizeDomain(body.domain());
+            String name = displayName + " · " + domain;
             // manifest.json
             String manifest = "{\n" +
-                "  \"name\": \"" + escape(body.displayName() == null ? userId : body.displayName()) + "\",\n" +
-                "  \"domain\": \"" + escape(body.domain() == null ? "综合" : body.domain()) + "\",\n" +
+                "  \"name\": \"" + escape(name) + "\",\n" +
+                "  \"domain\": \"" + escape(domain) + "\",\n" +
                 "  \"avatar\": \"avatar.svg\",\n" +
-                "  \"description\": \"由用户在社区中的发言蒸馏而成。\",\n" +
-                "  \"triggers\": " + json.writeValueAsString(body.triggers() == null ? List.of(body.domain() == null ? "综合" : body.domain()) : body.triggers()) + ",\n" +
+                "  \"description\": \"" + escape("从社区发言整理的" + domain + "经验，待本人确认。") + "\",\n" +
+                "  \"triggers\": " + json.writeValueAsString(body.triggers() == null || body.triggers().isEmpty() ? List.of(domain) : body.triggers()) + ",\n" +
                 "  \"source\": \"distilled\",\n" +
                 "  \"version\": \"v1\",\n" +
                 "  \"reviewStatus\": \"draft\"\n" +
@@ -121,10 +124,10 @@ public class UserDistillController extends BaseController {
             String meta = "{\n" +
                 "  \"schema_version\": \"1.0\",\n" +
                 "  \"skill_id\": \"" + newId + "\",\n" +
-                "  \"name\": \"" + escape(body.displayName() == null ? userId : body.displayName()) + "\",\n" +
+                "  \"name\": \"" + escape(name) + "\",\n" +
                 "  \"identity\": {\n" +
                 "    \"user_id\": \"" + userId + "\",\n" +
-                "    \"display_name\": \"" + escape(body.displayName() == null ? userId : body.displayName()) + "\",\n" +
+                "    \"display_name\": \"" + escape(displayName) + "\",\n" +
                 "    \"school\": \"" + escape(body.school() == null ? "未填写" : body.school()) + "\",\n" +
                 "    \"college\": \"" + escape(body.college() == null ? "未填写" : body.college()) + "\",\n" +
                 "    \"major\": \"" + escape(body.major() == null ? "未填写" : body.major()) + "\",\n" +
@@ -144,10 +147,10 @@ public class UserDistillController extends BaseController {
 
             // SKILL.md
             StringBuilder skill = new StringBuilder();
-            skill.append("# ").append(body.displayName() == null ? userId : body.displayName()).append("\n\n");
-            skill.append("由用户在社区中的发言蒸馏而成。\n\n");
+            skill.append("# ").append(name).append("\n\n");
+            skill.append("从社区发言整理的").append(domain).append("经验，待本人确认。\n\n");
             skill.append("## 触发条件\n\n");
-            for (String t : body.triggers() == null ? List.of("综合") : body.triggers()) {
+            for (String t : body.triggers() == null || body.triggers().isEmpty() ? List.of(domain) : body.triggers()) {
                 skill.append("- ").append(t).append("\n");
             }
             skill.append("\n## 步骤\n\n");
@@ -164,8 +167,8 @@ public class UserDistillController extends BaseController {
             // work.md / persona.md 简化
             Files.writeString(dir.resolve("work.md"), "# Work\n\n" + body.posts().get(0).body());
             Files.writeString(dir.resolve("persona.md"), "# Persona\n\n用户在社区中表现出的表达风格与判断习惯。");
-            Files.writeString(dir.resolve("work_skill.md"), "---\nname: work\ndescription: 由社区发言蒸馏出的工作能力 Skill。\n---\n\n# Work Skill\n");
-            Files.writeString(dir.resolve("persona_skill.md"), "---\nname: persona\ndescription: 由社区发言蒸馏出的表达偏好 Skill。\n---\n\n# Persona Skill\n");
+            Files.writeString(dir.resolve("work_skill.md"), "---\nname: work\ndescription: 从社区发言整理的工作能力 Skill。\n---\n\n# Work Skill\n");
+            Files.writeString(dir.resolve("persona_skill.md"), "---\nname: persona\ndescription: 从社区发言整理的表达偏好 Skill。\n---\n\n# Persona Skill\n");
 
             // sources.json
             StringBuilder sources = new StringBuilder();
@@ -195,6 +198,23 @@ public class UserDistillController extends BaseController {
 
     private static String truncate(String s, int max) {
         return s.length() > max ? s.substring(0, max) + "…" : s;
+    }
+
+    private static final List<String> CONTROLLED_DOMAINS = List.of(
+        "学习", "科研", "竞赛", "技能", "保研", "选课", "求职", "实习"
+    );
+
+    /** domain 收敛到受控词表：命中则用词表值，否则归入「学习」。 */
+    private String normalizeDomain(String domain) {
+        if (domain == null || domain.isBlank()) return "学习";
+        String d = domain.trim();
+        for (String known : CONTROLLED_DOMAINS) {
+            if (d.equals(known)) return known;
+        }
+        for (String known : CONTROLLED_DOMAINS) {
+            if (d.contains(known)) return known;
+        }
+        return "学习";
     }
 
     private static String escape(String s) {

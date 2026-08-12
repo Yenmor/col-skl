@@ -45,7 +45,7 @@ public class SqlitePostRepository implements PostRepository {
 
     @Override
     public List<Post> listAfter(String cursor, int limit, String authorId, String domain) {
-        // 简化实现：不分 cursor（limit 截断）；v2 可引入 cursor
+        // domain 支持逗号分隔多值（四方向映射到多中文标签）
         StringBuilder sql = new StringBuilder("SELECT * FROM posts WHERE 1=1");
         List<Object> args = new ArrayList<>();
         if (authorId != null && !authorId.isBlank()) {
@@ -53,8 +53,14 @@ public class SqlitePostRepository implements PostRepository {
             args.add(authorId);
         }
         if (domain != null && !domain.isBlank()) {
-            sql.append(" AND domain=?");
-            args.add(domain);
+            String[] parts = domain.split(",");
+            sql.append(" AND domain IN (");
+            for (int i = 0; i < parts.length; i++) {
+                if (i > 0) sql.append(",");
+                sql.append("?");
+                args.add(parts[i].trim());
+            }
+            sql.append(")");
         }
         sql.append(" ORDER BY created_at DESC LIMIT ?");
         args.add(limit);

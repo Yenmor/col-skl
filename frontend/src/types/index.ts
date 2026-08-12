@@ -54,4 +54,4 @@ export interface ChatMessage {
   isStreaming?: boolean
 }
 
-export const DOMAINS = ['全部', '保研', '竞赛', '科研', '求职']
+export const DOMAINS = ['全部', '学习', '保研', '科研', '竞赛', '技能']

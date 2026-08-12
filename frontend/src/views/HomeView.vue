@@ -1,124 +1,174 @@
 <template>
-  <section class="home">
-    <header class="hero">
-      <h1>学长 Skill 共创场</h1>
-      <p class="subtitle">把零散经验蒸馏为可被引用的学长.Skill。提问 / 蒸馏 / 复盘，都在这里。</p>
-      <div class="hints">
-        <button v-for="h in HINTS" :key="h" class="hint" @click="ask(h)">{{ h }}</button>
-      </div>
-    </header>
+  <div class="page-shell home-page" :class="[`home-${homeMode}`, `community-${communityPhase}`]">
+    <button
+      v-if="homeMode === 'chat' && !messages.length"
+      class="home-reveal-surface"
+      type="button"
+      aria-label="隐藏对话框并展开能力立方体"
+      @click="showCube"
+    />
 
-    <div class="composer-wrap">
-      <ChatComposer @submit="ask" :loading="store.loading" />
-    </div>
-
-    <div v-if="store.error" class="error-banner">{{ store.error }}</div>
-
-    <div v-if="store.messages.length" class="conversation">
-      <div
-        v-for="(m, i) in store.messages"
-        :key="i"
-        class="msg"
-        :class="{ user: m.role === 'user', assistant: m.role === 'assistant' }"
+    <template v-if="homeMode === 'chat'">
+      <section
+        class="chat-session"
+        :class="{ active: messages.length }"
+        :style="{ '--domain-color': activeDomain.color, '--domain-ink': activeDomain.ink }"
+        aria-label="SkillsLab 对话卡片"
       >
-        <div v-if="m.role === 'user'" class="bubble user-bubble">
-          <div class="bubble-author">你</div>
-          <div class="bubble-text">{{ m.content }}</div>
-        </div>
-        <div v-else-if="(m.answers ?? []).length > 0" class="answer-bubble">
-          <div class="answer-head">
-            <div class="avatar" :style="{ background: avatarColor((m.answers ?? [])[0].seniorId) }">
-              {{ ((m.answers ?? [])[0].name || '?').charAt(0) }}
-            </div>
+        <header v-if="messages.length" class="session-head">
+          <div class="session-identity">
+            <span>{{ activeDomain.glyph }}</span>
             <div>
-              <div class="answer-author">{{ (m.answers ?? [])[0].name }}</div>
-              <div class="answer-school">{{ (m.answers ?? [])[0].school }} · {{ (m.answers ?? [])[0].major }}</div>
+              <small>{{ activeDomain.code }}</small>
+              <strong v-if="chat.activeSenior">{{ chat.activeSenior.name }}</strong>
+              <strong v-else>{{ activeDomain.name }}方向 · 学长协作回答</strong>
             </div>
-            <router-link :to="`/seniors/${(m.answers ?? [])[0].seniorId}`" class="view-skill">查看 Skill</router-link>
           </div>
-          <div class="answer-content">{{ (m.answers ?? [])[0].content }}</div>
-        </div>
-      </div>
-    </div>
+          <div class="session-actions">
+            <button v-if="chat.activeSenior" type="button" @click="chat.switchSenior">
+              <RefreshCw :size="13" /><span class="action-label">换一位</span>
+            </button>
+            <RouterLink v-if="chat.activeSenior" :to="`/seniors/${chat.activeSenior.seniorId}`">
+              <BookOpen :size="13" /><span class="action-label">查看 Skill</span>
+            </RouterLink>
+            <button type="button" @click="resetConversation">
+              <RotateCcw :size="13" /><span class="action-label">新任务</span>
+            </button>
+          </div>
+        </header>
 
-    <div v-else class="empty">
-      <div class="empty-icon">💬</div>
-      <p>试试上面的提示按钮，或在下方输入你的问题</p>
-    </div>
-  </section>
+        <div v-if="messages.length" ref="scrollEl" class="session-messages">
+          <div
+            v-for="msg in messages"
+            :key="msg.id"
+            :class="msg.role === 'user' ? 'session-question' : 'session-answer'"
+          >
+            <template v-if="msg.role === 'user'">
+              <span>{{ msg.content }}</span>
+            </template>
+            <template v-else>
+              <i class="session-avatar">{{ activeDomain.glyph }}</i>
+              <div class="session-bubble">
+                <p>{{ msg.content }}</p>
+                <i v-if="msg.isStreaming" class="chat-caret" />
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <ChatComposer
+          compact
+          :loading="loading"
+          :context="activeDomain.name"
+          :context-color="activeDomain.color"
+          :placeholder="messages.length ? '继续追问，或描述一个新的真实任务' : placeholder"
+          @submit="ask"
+          @select-domain="abilitySpace.select"
+        />
+      </section>
+    </template>
+
+    <template v-else>
+      <nav class="home-layer-switcher" aria-label="能力地层">
+        <button
+          v-for="(domain, index) in skillDomains"
+          :key="domain.id"
+          type="button"
+          :class="{ active: activeId === domain.id }"
+          :style="{ '--domain-color': domain.color, '--domain-ink': domain.ink }"
+          @click="abilitySpace.select(domain.id)"
+        ><small>{{ String(index + 1).padStart(2, '0') }}</small><span>{{ domain.glyph }}</span><strong>{{ domain.name }}</strong></button>
+      </nav>
+
+      <div class="home-cube-controls" aria-label="立方体视角控制">
+        <button type="button" title="向左旋转" aria-label="向左旋转" @click="abilitySpace.commandCube('left')"><ArrowLeft :size="16" /></button>
+        <button type="button" title="暂停或继续自动运动" aria-label="暂停或继续自动运动" @click="abilitySpace.commandCube('motion')"><Pause :size="15" /></button>
+        <button type="button" title="重置视角" aria-label="重置视角" @click="abilitySpace.commandCube('reset')"><RotateCcw :size="15" /></button>
+        <button type="button" title="向右旋转" aria-label="向右旋转" @click="abilitySpace.commandCube('right')"><ArrowRight :size="16" /></button>
+      </div>
+    </template>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
-import { useChatStore } from '../stores/chatStore';
-import ChatComposer from '../components/chat/ChatComposer.vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import { ArrowLeft, ArrowRight, BookOpen, Pause, RefreshCw, RotateCcw } from '@lucide/vue'
+import { useChatStore } from '../stores/chatStore'
+import { useAbilitySpaceStore } from '../stores/abilitySpace'
+import { domainById, inferDomain, skillDomains } from '../domain'
+import ChatComposer from '../components/chat/ChatComposer.vue'
 
-const store = useChatStore();
+const chat = useChatStore()
+const abilitySpace = useAbilitySpaceStore()
+const { messages } = storeToRefs(chat)
+const { activeId, homeMode, communityPhase } = storeToRefs(abilitySpace)
+const loading = computed(() => chat.loading)
+const scrollEl = ref<HTMLElement>()
+const activeDomain = computed(() => domainById(activeId.value))
+const CUBE_IDLE_TIMEOUT = 5000
+const activityEvents = ['pointerdown', 'pointermove', 'wheel', 'keydown', 'touchstart'] as const
+let cubeIdleTimer: number | undefined
 
-const HINTS = [
-  '保研流程怎么准备？',
-  '计算机选课避坑',
-  'ACM 怎么入门？',
-  '如何找科研',
-];
+const placeholder = computed(() => `今天想推进什么？描述你的${activeDomain.value.name}任务...`)
+
+function showCube() {
+  abilitySpace.showCube()
+}
+
+function clearCubeIdleTimer() {
+  if (cubeIdleTimer === undefined) return
+  window.clearTimeout(cubeIdleTimer)
+  cubeIdleTimer = undefined
+}
+
+function scheduleCubeIdleReturn() {
+  clearCubeIdleTimer()
+  if (homeMode.value !== 'cube' || communityPhase.value !== 'idle' || messages.value.length) return
+  cubeIdleTimer = window.setTimeout(() => {
+    cubeIdleTimer = undefined
+    if (homeMode.value === 'cube' && communityPhase.value === 'idle' && !messages.value.length) {
+      abilitySpace.showChat()
+    }
+  }, CUBE_IDLE_TIMEOUT)
+}
+
+function noteCubeActivity() {
+  if (homeMode.value === 'cube') scheduleCubeIdleReturn()
+}
+
+watch([homeMode, communityPhase], scheduleCubeIdleReturn, { flush: 'post' })
+watch(messages, () => scrollBottom(), { deep: true })
+
+onMounted(() => {
+  if (communityPhase.value === 'idle' && !messages.value.length) abilitySpace.showChat()
+  activityEvents.forEach(event => window.addEventListener(event, noteCubeActivity, { passive: true }))
+  scheduleCubeIdleReturn()
+  chat.loadHistory().then(scrollBottom)
+})
+
+onBeforeUnmount(() => {
+  clearCubeIdleTimer()
+  activityEvents.forEach(event => window.removeEventListener(event, noteCubeActivity))
+})
+
+function scrollBottom() {
+  nextTick(() => {
+    if (!scrollEl.value) return
+    const streaming = messages.value.some(m => m.isStreaming)
+    scrollEl.value.scrollTo({ top: scrollEl.value.scrollHeight, behavior: streaming ? 'auto' : 'smooth' })
+  })
+}
+
+function resetConversation() {
+  chat.reset()
+  abilitySpace.showChat()
+}
 
 async function ask(text: string) {
-  await store.send(text);
+  if (loading.value || !text.trim()) return
+  const inferred = inferDomain(text)
+  abilitySpace.select(inferred.id)
+  await chat.send(text)
 }
-
-function avatarColor(seed: string): string {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
-  const palette = ['#fde0e6', '#dceafd', '#e5f4dc', '#f9eedc', '#ece4fa', '#fde6d4', '#d4f0fa'];
-  return palette[Math.abs(h) % palette.length];
-}
-
-onMounted(async () => {
-  await store.loadHistory();
-});
 </script>
-
-<style scoped>
-.home { padding: 0 0 120px; max-width: 720px; margin: 0 auto; }
-
-/* 沉浸式 hero */
-.hero { padding: 60px 24px 40px; text-align: center; background: linear-gradient(180deg, #fce4ec 0%, transparent 100%); }
-.hero h1 { font-size: 32px; font-weight: 800; color: var(--ink); margin: 0 0 8px; letter-spacing: -0.5px; }
-.subtitle { color: var(--ink-2); margin: 0 0 24px; font-size: 15px; line-height: 1.6; }
-.hints { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-.hint { padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border); background: var(--paper); cursor: pointer; color: var(--ink); font-size: 14px; transition: all 0.15s; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-.hint:hover { background: var(--pink); color: white; border-color: var(--pink); }
-
-.composer-wrap { padding: 0 24px 16px; }
-.error-banner { margin: 0 24px 12px; padding: 10px 14px; background: #fee; border: 1px solid #fcc; border-radius: 8px; color: #a00; font-size: 14px; }
-
-/* 对话流 */
-.conversation { padding: 0 24px; display: flex; flex-direction: column; gap: 20px; }
-.msg { animation: fadeIn 0.2s ease; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-
-.bubble { padding: 12px 18px; border-radius: 18px; max-width: 80%; }
-.bubble-author { font-size: 12px; opacity: 0.7; margin-bottom: 2px; }
-.bubble-text { font-size: 15px; line-height: 1.6; }
-.user-bubble { background: var(--pink); color: white; margin-left: auto; border-bottom-right-radius: 4px; }
-.user-bubble .bubble-author { color: rgba(255,255,255,0.85); }
-
-/* 单学长回答气泡 */
-.answer-bubble { background: var(--surface); border-radius: 18px; padding: 16px 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); border-bottom-left-radius: 4px; }
-.answer-head { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
-.avatar { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; color: white; font-weight: 700; font-size: 16px; flex: 0 0 auto; }
-.answer-author { font-weight: 600; color: var(--ink); font-size: 15px; }
-.answer-school { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
-.view-skill { margin-left: auto; padding: 4px 12px; border-radius: 999px; background: var(--pink); color: white; text-decoration: none; font-size: 12px; }
-.answer-content { color: var(--ink); font-size: 15px; line-height: 1.8; white-space: pre-wrap; }
-
-/* 空态 */
-.empty { padding: 60px 24px; text-align: center; color: var(--ink-2); }
-.empty-icon { font-size: 48px; margin-bottom: 12px; }
-
-@media (max-width: 720px) {
-  .hero { padding: 40px 16px 30px; }
-  .hero h1 { font-size: 26px; }
-  .conversation, .composer-wrap, .error-banner { padding-left: 16px; padding-right: 16px; }
-}
-</style>

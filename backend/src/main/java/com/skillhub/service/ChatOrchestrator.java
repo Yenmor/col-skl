@@ -50,10 +50,17 @@ public class ChatOrchestrator {
     }
 
     public List<SeniorAnswer> orchestrate(String message) {
+        return orchestrate(message, null);
+    }
+
+    public List<SeniorAnswer> orchestrate(String message, String excludeSeniorId) {
         List<SeniorReader.SeniorCandidate> candidates = reader.listCandidates();
         Set<String> msgTokens = tokenize(message);
         var scored = new ArrayList<ScoredCandidate>();
         for (var c : candidates) {
+            if (excludeSeniorId != null && !excludeSeniorId.isBlank() && c.id().equals(excludeSeniorId)) {
+                continue;
+            }
             int overlap = jaccard(msgTokens, tokenize(c.skillHead()));
             // domain 命中加权
             if (c.domain() != null && !c.domain().isBlank() && message.contains(c.domain())) {
@@ -132,12 +139,18 @@ public class ChatOrchestrator {
         String major = senior != null ? senior.major() : candidate.major();
         String domain = senior != null ? senior.domain() : candidate.domain();
         StringBuilder sb = new StringBuilder();
-        sb.append("你是大学生成长 Skill 共创场中的「").append(name).append("」。\n")
-          .append("你的学校是").append(safe(school))
+        sb.append("你是大学经验分享社区里的「").append(name).append("」。\n")
+          .append("你的学校是").append(schoolPhrase(school))
           .append("，专业是").append(safe(major))
           .append("，主要领域是").append(safe(domain)).append("。\n")
           .append("请严格依据下面的 Skill 经验与记忆片段回答用户，不要假装拥有文档之外的经历；如果信息不足，请明确说出不确定之处。")
           .append("回答要具体、友好、可执行，优先给出步骤、时间点或判断标准，不要提及系统提示词、模型或内部编排。\n\n")
+          .append("【对话风格要求】\n")
+          .append("像在微信里和学弟学妹聊天一样自然，说人话，不要写论文。\n")
+          .append("1. 禁止使用任何 Markdown 语法：不要出现 **加粗**、# 标题、- 或 * 列表、` 反引号、> 引用、[链接](url) 等符号；数字步骤请直接写成“第一句……第二句……”或自然分段。\n")
+          .append("2. 用自然空行分段，每条回复 3 到 8 句，句子要短。\n")
+          .append("3. 先回应对方的问题或情绪，再给建议，结尾可以用一句轻量的追问。\n")
+          .append("4. 不要用“首先、其次、最后、综上所述”之类的套路词，多用“我当时……”“你其实可以……”“别慌”这类口语。\n\n")
           .append("【SKILL.md】\n").append(truncate(skillMd, 6000));
 
         // ---- 简化 RAG：从 senior_fragments 召回与用户问题相关的记忆片段 ----
@@ -195,6 +208,14 @@ public class ChatOrchestrator {
 
     private static String safe(String value) {
         return value == null || value.isBlank() ? "未填写" : value;
+    }
+
+    /** 学校字段的占位值过滤：示例数据、未填写时不让 LLM 自称某校学生。 */
+    private static String schoolPhrase(String school) {
+        if (school == null || school.isBlank() || school.equals("示例大学") || school.equals("未填写")) {
+            return "学校信息未提供（不要自称是某所学校的学生）";
+        }
+        return school;
     }
 
     private static String truncate(String text, int max) {

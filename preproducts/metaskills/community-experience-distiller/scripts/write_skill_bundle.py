@@ -40,7 +40,7 @@ def collect_evidence(data: dict[str, Any]) -> set[str]:
             if isinstance(item, dict):
                 evidence.update(evidence_of(item))
     persona = data.get("persona", {})
-    for key in ("communication_principles", "expression_patterns", "uncertainty_behavior"):
+    for key in ("communication_principles", "expression_patterns", "uncertainty_behavior", "chat_style"):
         for item in persona.get(key, []) if isinstance(persona, dict) else []:
             if isinstance(item, dict):
                 evidence.update(evidence_of(item))
@@ -121,7 +121,7 @@ def bullet_section(title: str, items: list[dict[str, Any]]) -> str:
 def render_work(data: dict[str, Any]) -> str:
     name = data["skill"]["name"]
     work = data["work"]
-    parts = [f"# {name} — 能力方法", ""]
+    parts = [f"# {name} — 能力方法（口述版）", ""]
     sections = [
         ("任务范围", "scope"), ("所需输入", "required_inputs"),
         ("完成标准", "completion_criteria"), ("常见错误", "pitfalls"),
@@ -132,7 +132,7 @@ def render_work(data: dict[str, Any]) -> str:
     parts.extend(f"{item.get('step', i)}. {cited(item)}" for i, item in enumerate(workflow, 1))
     parts.append("")
     parts.extend(["## 决策节点", ""])
-    parts.extend(f"- **如果** {item['condition']}，**则** {item['action']}。〔证据：{', '.join(evidence_of(item))}〕" for item in work.get("decision_points", []))
+    parts.extend(f"- {item['condition']}：{item['action']}。〔证据：{', '.join(evidence_of(item))}〕" for item in work.get("decision_points", []))
     parts.append("")
     for title, key in sections:
         items = work.get(key, [])
@@ -145,7 +145,7 @@ def render_persona(data: dict[str, Any]) -> str:
     name = data["skill"]["name"]
     persona = data.get("persona", {})
     parts = [f"# {name} — 表达偏好", "", "> 本文件只描述该领域中有直接证据支持的沟通方式，不代表完整人格。", ""]
-    for title, key in (("沟通原则", "communication_principles"), ("表达模式", "expression_patterns"), ("不确定性处理", "uncertainty_behavior")):
+    for title, key in (("聊天风格", "chat_style"), ("沟通原则", "communication_principles"), ("表达模式", "expression_patterns"), ("不确定性处理", "uncertainty_behavior")):
         items = persona.get(key, [])
         if items:
             parts.extend([bullet_section(title, items), ""])
@@ -168,11 +168,12 @@ def render_combined(data: dict[str, Any], work_md: str, persona_md: str) -> str:
 
 ## 运行契约
 
-1. 先检查用户是否提供了“所需输入”；不足时优先追问。
-2. 严格按照下方能力方法给出步骤与判断，不编造材料之外的经历。
-3. 涉及时间敏感事实时说明适用时间，并建议核对官方来源。
-4. 命中能力边界时停止强答，说明缺口或交给人工确认。
-5. 保持下方表达偏好，但可信度来自证据和边界，而不是口吻模仿。
+1. 像微信里和学弟学妹聊天一样说话：短句、口语，先接住对方的问题或情绪，再给建议。回答里禁止使用任何 Markdown 语法（加粗、井号标题、横线列表、反引号、引用符号），用自然空行分段，每条回复 3 到 8 句。
+2. 先看对方是否提供了“所需输入”；不足时优先追问最缺的一两项，别一次问一堆。
+3. 严格按照下方能力方法给出步骤与判断，不编造材料之外的经历。
+4. 涉及时间敏感事实时说明适用时间，并建议核对官方来源。
+5. 命中能力边界时停止强答，说明缺口或交给人工确认。
+6. 保持下方表达偏好，但可信度来自证据和边界，而不是口吻模仿。
 
 ---
 

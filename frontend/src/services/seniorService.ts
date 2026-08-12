@@ -5,17 +5,17 @@ const BASE = import.meta.env.VITE_API_BASE ?? ''
 
 const FALLBACK: SeniorSkill[] = [
   {
-    id: 'chen-baoyan', name: '陈学姐 · 保研组', school: '山西大学',
+    id: 'chen-baoyan', name: '陈学姐 · 保研', school: '山西大学',
     major: '计算机与信息技术学院 · 软件工程', year: '2024', domain: '保研',
     avatarFilename: 'chen.svg', source: 'manual', createdAt: '2026-08-12',
   },
   {
-    id: 'zhang-jingsai', name: '张学长 · 竞赛组', school: '山西大学',
+    id: 'zhang-jingsai', name: '张学长 · 竞赛', school: '山西大学',
     major: '自动化与软件学院 · 软件工程', year: '2023', domain: '竞赛',
     avatarFilename: 'zhang.svg', source: 'manual', createdAt: '2026-08-12',
   },
   {
-    id: 'li-keyan', name: '李学长 · 科研组', school: '山西大学',
+    id: 'li-keyan', name: '李学长 · 科研', school: '山西大学',
     major: '数学科学学院 · 统计学', year: '2022', domain: '科研',
     avatarFilename: 'li.svg', source: 'manual', createdAt: '2026-08-12',
   },

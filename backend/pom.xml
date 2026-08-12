@@ -55,6 +55,12 @@
       <artifactId>spring-boot-starter-test</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- 自动从 backend/.env 注入 LLM_PROVIDER / DEEPSEEK_* 到 Environment -->
+    <dependency>
+      <groupId>me.paulschwarz</groupId>
+      <artifactId>spring-dotenv</artifactId>
+      <version>4.0.0</version>
+    </dependency>
   </dependencies>
 
   <build>

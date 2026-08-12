@@ -18,6 +18,9 @@ public class ChatRequestV1 {
     /** 可空；首请求不传，服务端补 UUIDv4 并在响应中回传（D5）。 */
     private String sessionId;
 
+    /** 可空；"换一位"时排除上次选中的学长。 */
+    private String excludeSeniorId;
+
     public ChatRequestV1() {
     }
 
@@ -40,5 +43,13 @@ public class ChatRequestV1 {
 
     public void setSessionId(String sessionId) {
         this.sessionId = sessionId;
+    }
+
+    public String getExcludeSeniorId() {
+        return excludeSeniorId;
+    }
+
+    public void setExcludeSeniorId(String excludeSeniorId) {
+        this.excludeSeniorId = excludeSeniorId;
     }
 }

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { seniorStoreMock } from '../services/seniorServiceMock';
+import axios from 'axios';
 import type { SeniorSkill } from '../types/index';
 
 export const useSeniorStore = defineStore('senior', () => {
@@ -14,7 +14,8 @@ export const useSeniorStore = defineStore('senior', () => {
     loading.value = true;
     error.value = null;
     try {
-      items.value = await seniorStoreMock.list();
+      const res = await axios.get('/api/seniors');
+      items.value = (res.data?.items ?? []) as SeniorSkill[];
     } catch (e) {
       error.value = (e as Error).message;
       items.value = [];

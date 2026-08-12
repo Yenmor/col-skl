@@ -88,6 +88,10 @@ python scripts/prepare_fragments.py input.json --output fragments.json
 
 只提炼有多条直接发言支持的表达偏好，例如先追问背景、喜欢给时间表、如何表达不确定性。不得将语气模仿包装成专业能力，不得写心理动机，不得放大偶发情绪。
 
+**聊天风格（chat_style）必须蒸馏。** 从发言中提炼"怎么和学弟学妹说话"：开场怎么接住问题或情绪、追问一次问几个、句子长短、是否直接给结论、承认不知道时的说法。所有 chat_style 条目同样必须带 evidence。
+
+蒸馏出的全部语句（work 与 persona）都要写成口语化的直接建议，短句优先，不写论文腔、不用"首先/其次/综上所述"。
+
 ### 7. 生成蒸馏对象
 
 按 [distillation-schema.md](references/distillation-schema.md) 写出 `distillation.json`。所有 `evidence` 数组必须引用 `fragments.json` 中存在的 ID。默认设置：

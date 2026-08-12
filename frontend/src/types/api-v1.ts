@@ -214,6 +214,8 @@ export type LikeResult = {
 export type ChatRequestV1 = {
   message: string;
   sessionId?: Uuid;
+  /** "换一位"时排除上次选中的学长 */
+  excludeSeniorId?: Uuid;
 };
 
 export type ChatAnswer = {

@@ -1,7 +1,10 @@
 {
-  "name": "陈学姐 · 保研组",
+  "name": "陈学姐 · 保研",
   "domain": "保研",
-  "tags": ["保研", "推免", "升学"],
-  "avatar": "chen.png",
-  "preview": "2024 届计信院保研中科院计算所，给时间表不给鸡汤。"
+  "avatar": "chen.svg",
+  "description": "2024 届山大计信院软工，保研中科院计算所。把保研时间线按月份拆给你，不灌鸡汤。",
+  "triggers": ["保研", "推免", "预推免", "绩点", "排名", "GPA", "加分", "导师"],
+  "source": "manual",
+  "version": "v1",
+  "reviewStatus": "draft"
 }

@@ -74,7 +74,7 @@ function authHeader(): Record<string, string> {
   return { [Headers.USER_ID]: getOrCreateUserId() };
 }
 
-async function request<T>(method: string, url: string, body?: unknown, extraHeaders?: Record<string, string>): Promise<T> {
+export async function request<T>(method: string, url: string, body?: unknown, extraHeaders?: Record<string, string>): Promise<T> {
   try {
     const res: AxiosResponse<T> = await http.request<T>({
       method,

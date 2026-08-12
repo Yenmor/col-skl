@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "skill_id": "sdu-software-freshman-planning",
+  "name": "山大软工学长 · 新生指导",
+  "identity": {
+    "user_id": "u_senior_test",
+    "school": "山西大学",
+    "college": "",
+    "major": "软件工程",
+    "year_graduated": ""
+  },
+  "lifecycle": {
+    "version": "v0.1-test",
+    "status": "draft",
+    "generated_at": "2026-08-12T09:22:17.461600+00:00"
+  },
+  "review": {
+    "author_confirmed": false,
+    "status": "draft",
+    "confirmed_at": null,
+    "confirmed_by": null
+  },
+  "maturity": {
+    "coverage": 3,
+    "repeatability": 3,
+    "boundaries": 4,
+    "evidence_quality": 2,
+    "total": 12,
+    "decision": "full_skill",
+    "rationale": "三个明确分隔的会话阶段包含219条目标用户发言，反复覆盖成绩、数学与编程基础、竞赛、保研和就业分流，能够提炼条件化步骤；同时多次主动声明不了解保研机构、考研难度、保外面试和实训细节。由于缺少精确时间、官方政策依据、跨用户复现和任务结果反馈，证据质量仅评2分，产物只能作为待本人确认的测试草稿。"
+  }
+}

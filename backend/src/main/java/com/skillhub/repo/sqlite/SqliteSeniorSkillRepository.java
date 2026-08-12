@@ -67,6 +67,16 @@ public class SqliteSeniorSkillRepository implements SeniorSkillRepository {
         return jdbc.query(sql.toString(), (rs, n) -> map(rs), argList.toArray());
     }
 
+    @Override
+    public List<String> allIds() {
+        return jdbc.query("SELECT id FROM senior_skills", (rs, n) -> rs.getString("id"));
+    }
+
+    @Override
+    public void deleteById(String id) {
+        jdbc.update("DELETE FROM senior_skills WHERE id=?", id);
+    }
+
     private SeniorSkill map(ResultSet rs) throws SQLException {
         return new SeniorSkill(
             rs.getString("id"),

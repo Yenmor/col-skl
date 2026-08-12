@@ -1,0 +1,10 @@
+{
+  "name": "山大软工学长 · 新生指导",
+  "domain": "学习",
+  "avatar": "avatar.svg",
+  "description": "山大软工低年级的路怎么走：绩点、数学、编程、竞赛，按保研还是就业排个先后，再动手。",
+  "triggers": ["保研", "考研", "绩点", "高数", "算法", "竞赛", "就业", "大一", "大二"],
+  "source": "distilled",
+  "version": "v0.1-test",
+  "reviewStatus": "draft"
+}

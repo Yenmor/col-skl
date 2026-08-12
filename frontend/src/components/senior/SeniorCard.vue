@@ -11,11 +11,11 @@
       <div class="senior-name">{{ senior.name }}</div>
       <div class="senior-major">{{ senior.major }}</div>
       <div class="mt-2 flex flex-wrap gap-1.5">
-        <span class="school-tag">{{ senior.school }}</span>
-        <span class="school-tag">{{ senior.year }} 届</span>
+        <span v-if="senior.school" class="school-tag">{{ senior.school }}</span>
+        <span v-if="senior.year" class="school-tag">{{ senior.year }} 届</span>
       </div>
       <div class="senior-meta">
-        <span>{{ senior.source === 'distilled' ? '蒸馏自公开内容' : '直接上传' }}</span>
+        <span>{{ senior.source === 'distilled' ? '社区发言整理' : '本人上传' }}</span>
         <span class="pink">查看 →</span>
       </div>
     </div>

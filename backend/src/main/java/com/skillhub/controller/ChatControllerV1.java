@@ -65,14 +65,16 @@ public class ChatControllerV1 extends BaseController {
             Instant.now()
         ));
 
-        List<ChatOrchestrator.SeniorAnswer> answers = orchestrator.orchestrate(req.getMessage());
+        List<ChatOrchestrator.SeniorAnswer> answers = orchestrator.orchestrate(req.getMessage(), req.getExcludeSeniorId());
 
-        chatRepo.save(new ChatMessageEntity(
-            UUID.randomUUID().toString(),
-            sessionId, "assistant",
-            null, orchestrator.serialize(answers),
-            Instant.now()
-        ));
+        if (!answers.isEmpty()) {
+            chatRepo.save(new ChatMessageEntity(
+                UUID.randomUUID().toString(),
+                sessionId, "assistant",
+                null, orchestrator.serialize(answers),
+                Instant.now()
+            ));
+        }
 
         List<ChatResponseV1.Answer> mapped = answers.stream().map(a ->
             new ChatResponseV1.Answer(

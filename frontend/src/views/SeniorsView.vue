@@ -1,46 +1,82 @@
 <template>
-  <section class="seniors">
-    <header class="head">
-      <div>
-        <h1>学长 Skill 库</h1>
-        <p class="hint">点击卡片查看完整 Skill</p>
+  <div class="page-shell seniors-page">
+    <TopBar action-label="+ 分享经历" @action="goDistill" />
+    <main class="content-width">
+      <div class="page-intro">
+        <div>
+          <p>SKILL LIBRARY</p>
+          <h1>Skill 仓库</h1>
+          <span>学长们分享的真实经验，点击卡片查看详情。</span>
+        </div>
+        <RouterLink to="/community" class="upload-button">+ 分享经历</RouterLink>
       </div>
-      <router-link to="/community#distill-user" class="btn-primary">+ 蒸馏新 Skill</router-link>
-    </header>
 
-    <div v-if="store.loading" class="loading">加载中…</div>
-    <div v-else-if="store.items.length === 0" class="empty">还没有学长数据。上传一份七件套 zip 试试。</div>
-    <div v-else class="grid">
-      <article v-for="s in store.items" :key="s.id" class="card" :style="{ borderTop: `4px solid ${pickColor(s.id)}` }">
-        <div class="card-head">
-          <h3>{{ s.name }}</h3>
-          <span v-if="s.source === 'distilled'" class="badge distilled">蒸馏</span>
-        </div>
-        <div class="meta">
-          <span>{{ s.school }}</span>
-          <span v-if="s.major">· {{ s.major }}</span>
-          <span v-if="s.year">· {{ s.year }}</span>
-        </div>
-        <span v-if="s.domain" class="domain">{{ s.domain }}</span>
-        <div class="actions">
-          <router-link :to="`/seniors/${s.id}`" class="link">查看 Skill</router-link>
-        </div>
-      </article>
-    </div>
-  </section>
+      <nav class="domain-switcher" aria-label="按方向筛选">
+        <button
+          v-for="d in filterDomains"
+          :key="d.id"
+          :class="{ active: store.selectedDomain === d.id }"
+          :style="{ '--domain-color': d.color, '--domain-ink': d.ink }"
+          @click="store.selectedDomain = d.id"
+        ><span>{{ d.glyph }}</span>{{ d.name }}</button>
+      </nav>
+
+      <div v-if="store.loading" class="feed-skeleton"><span v-for="n in 4" :key="n" /></div>
+      <div v-else-if="filteredItems.length === 0" class="feed-empty">这个方向还没有学长 Skill。</div>
+      <div v-else class="senior-grid">
+        <RouterLink
+          v-for="s in filteredItems"
+          :key="s.id"
+          :to="`/seniors/${s.id}`"
+          class="senior-card"
+          :style="{ '--domain-color': domainColorOf(s.domain), '--domain-ink': domainInkOf(s.domain) }"
+        >
+          <span class="senior-glyph">{{ (s.name || '?').charAt(0) }}</span>
+          <div class="senior-info">
+            <h2>{{ s.name }}</h2>
+            <p>{{ s.school }}<template v-if="s.major"> · {{ s.major }}</template></p>
+          </div>
+          <span v-if="s.source === 'distilled'" class="senior-distilled">社区分享</span>
+        </RouterLink>
+      </div>
+    </main>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useSeniorStore } from '../stores/seniorStore';
+import { skillDomains } from '../domain';
+import TopBar from '../components/common/TopBar.vue';
 
 const store = useSeniorStore();
-const PALETTE = ['#fde0e6', '#dceafd', '#e5f4dc', '#f9eedc', '#ece4fa', '#fde6d4'];
+const router = useRouter();
 
-function pickColor(id: string): string {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-  return PALETTE[Math.abs(h) % PALETTE.length];
+const filterDomains = computed(() => {
+  return skillDomains.map(d => ({ id: d.name, name: d.name, glyph: d.glyph, color: d.color, ink: d.ink }));
+});
+
+const filteredItems = computed(() => {
+  if (!store.selectedDomain) return store.items;
+  const dom = skillDomains.find(d => d.name === store.selectedDomain);
+  if (!dom) return store.items;
+  return store.items.filter(s => s.domain && dom.aliases.some(a => s.domain.includes(a)));
+});
+
+function domainColorOf(domain: string | undefined): string {
+  if (!domain) return 'var(--ink)';
+  const hit = skillDomains.find(d => d.aliases.some(a => domain.includes(a)));
+  return hit?.color ?? 'var(--ink)';
+}
+function domainInkOf(domain: string | undefined): string {
+  if (!domain) return 'var(--ink)';
+  const hit = skillDomains.find(d => d.aliases.some(a => domain.includes(a)));
+  return hit?.ink ?? 'var(--ink)';
+}
+
+function goDistill() {
+  router.push('/community');
 }
 
 onMounted(async () => {
@@ -49,26 +85,16 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.seniors { padding: 24px; max-width: 1000px; margin: 0 auto; }
-.head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
-.head h1 { font-size: 26px; margin: 0 0 4px; color: var(--ink); }
-.hint { color: var(--ink-2); margin: 0; }
-.btn-primary { padding: 8px 16px; border-radius: 8px; background: var(--pink); color: white; text-decoration: none; font-size: 14px; white-space: nowrap; }
-.btn-primary:hover { background: var(--pink-2, var(--pink)); filter: brightness(0.95); }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
-.card { background: var(--surface); border-radius: 12px; padding: 16px; }
-.card-head { display: flex; justify-content: space-between; align-items: center; }
-.card-head h3 { margin: 0 0 4px; font-size: 16px; color: var(--ink); }
-.badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
-.badge.distilled { background: #fce4ec; color: #c2185b; }
-.meta { color: var(--ink-2); font-size: 12px; margin-bottom: 6px; }
-.domain { display: inline-block; padding: 2px 8px; background: var(--surface-2); border-radius: 4px; font-size: 12px; color: var(--ink-2); }
-.actions { display: flex; margin-top: 12px; }
-.link { color: var(--pink); text-decoration: none; font-size: 14px; }
-.link:hover { text-decoration: underline; }
-.loading, .empty { padding: 40px; text-align: center; color: var(--ink-2); }
-@media (max-width: 720px) {
-  .seniors { padding: 16px; }
-  .head h1 { font-size: 20px; }
-}
+.senior-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 22px; }
+.senior-card { display: flex; align-items: center; gap: 13px; padding: 15px 17px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; text-decoration: none; transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease; }
+.senior-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(16,45,59,.08); border-color: var(--domain-color); }
+.senior-glyph { width: 40px; height: 40px; display: grid; place-items: center; flex: 0 0 auto; border: 1px solid var(--domain-ink); border-radius: 4px; background: color-mix(in srgb, var(--domain-color) 18%, white); color: var(--domain-ink); font-size: 17px; font-weight: 800; }
+.senior-info { min-width: 0; flex: 1; }
+.senior-info h2 { margin: 0; font-size: 13px; color: var(--ink); }
+.senior-info p { margin: 3px 0 0; color: var(--ink-soft); font-size: 10px; }
+.senior-distilled { flex: 0 0 auto; padding: 2px 7px; border-radius: 4px; background: color-mix(in srgb, var(--domain-color) 15%, white); color: var(--domain-ink); font-size: 9px; font-weight: 800; }
+.feed-skeleton { display: flex; flex-direction: column; gap: 12px; margin-top: 22px; }
+.feed-skeleton span { height: 72px; border-radius: 8px; background: linear-gradient(90deg, var(--surface-soft) 25%, var(--surface) 50%, var(--surface-soft) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (max-width: 720px) { .senior-grid { grid-template-columns: 1fr; } }
 </style>

@@ -1,7 +1,10 @@
 {
-  "name": "李学长 · 科研组",
+  "name": "李学长 · 科研",
   "domain": "科研",
-  "tags": ["科研", "读论文", "导师"],
-  "avatar": "li.png",
-  "preview": "2022 届数科院本科发 SCI 三作，现浙大直博。"
+  "avatar": "li.svg",
+  "description": "2022 届山大数院统计，本科发过 SCI 三作，现浙大直博。教你找导师、定课题、读论文。",
+  "triggers": ["科研", "导师", "读论文", "文献", "发论文", "读研", "直博", "课题组"],
+  "source": "manual",
+  "version": "v1",
+  "reviewStatus": "draft"
 }

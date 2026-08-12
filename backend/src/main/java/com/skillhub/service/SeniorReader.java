@@ -39,8 +39,18 @@ public class SeniorReader {
     public void scanOnBoot() {
         try {
             Files.createDirectories(seniorsDir);
+            Set<String> dirIds = new HashSet<>();
             try (Stream<Path> stream = Files.list(seniorsDir)) {
-                stream.filter(Files::isDirectory).forEach(this::ingestIfValid);
+                stream.filter(Files::isDirectory).forEach(dir -> {
+                    dirIds.add(dir.getFileName().toString());
+                    ingestIfValid(dir);
+                });
+            }
+            // 清理 DB 中目录已不存在的孤儿记录
+            for (String dbId : repo.allIds()) {
+                if (!dirIds.contains(dbId)) {
+                    repo.deleteById(dbId);
+                }
             }
         } catch (IOException e) {
             throw new RuntimeException("初始化扫描 seniors 目录失败", e);
@@ -64,16 +74,26 @@ public class SeniorReader {
 
             String avatar = String.valueOf(manifest.getOrDefault("avatar", ""));
 
+            // college 为空时不拼 " · " 前缀，避免出现 " · 软件工程"
+            String college = String.valueOf(identity.getOrDefault("college", ""));
+            String major = String.valueOf(identity.getOrDefault("major", ""));
+            String majorDisplay = college == null || college.isBlank() || "null".equals(college)
+                ? major
+                : college + " · " + major;
+
+            // source 优先取 manifest.source（distilled/manual），缺省 manual
+            String source = String.valueOf(manifest.getOrDefault("source", "manual"));
+            if (source == null || source.isBlank() || "null".equals(source)) source = "manual";
+
             SeniorSkill s = new SeniorSkill(
                 id,
                 String.valueOf(manifest.getOrDefault("name", id)),
                 String.valueOf(identity.getOrDefault("school", "")),
-                String.valueOf(identity.getOrDefault("college", "")) + " · " +
-                    String.valueOf(identity.getOrDefault("major", "")),
+                majorDisplay,
                 String.valueOf(identity.getOrDefault("year_graduated", "")),
                 String.valueOf(manifest.getOrDefault("domain", "")),
                 avatar,
-                "manual",
+                source,
                 Instant.now()
             );
             return repo.save(s);
