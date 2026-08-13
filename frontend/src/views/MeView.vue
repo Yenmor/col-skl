@@ -1,7 +1,15 @@
 <template>
   <div class="page-shell profile-page">
     <TopBar />
-    <main class="profile-layout content-width" :class="{ focused: expandedId }" @keydown.esc="closeExpanded">
+    <main
+      class="profile-layout content-width"
+      :class="{
+        focused: expandedId,
+        'morph-visible': profileRevealPhase === 'outline' || profileRevealPhase === 'ready',
+        'morph-ready': profileRevealPhase === 'ready',
+      }"
+      @keydown.esc="closeExpanded"
+    >
       <header class="profile-header">
         <div class="profile-person">
           <span>{{ displayName.slice(0, 1) }}</span>
@@ -370,7 +378,7 @@ const profileDomains = ref<ProfileDomain[]>(skillDomains.map(domain => ({
 
 const router = useRouter()
 const abilitySpace = useAbilitySpaceStore()
-const { expandedId } = storeToRefs(abilitySpace)
+const { expandedId, profileRevealPhase } = storeToRefs(abilitySpace)
 const displayName = ref('我')
 const abilityProfile = ref<AbilityProfile | null>(null)
 const profileLoading = ref(false)

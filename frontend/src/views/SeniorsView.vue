@@ -3,9 +3,15 @@
     <TopBar />
 
     <header class="catalog-hero content-width">
-      <div>
+      <div class="catalog-hero-copy">
         <h1>Skill 仓库</h1>
         <p>按真实元数据查找校园经验，用任务召回结果判断匹配度，再单独核对七件套信任指标。</p>
+      </div>
+      <div class="catalog-cube-backdrop" aria-hidden="true">
+        <span class="catalog-cube-aura" />
+        <span v-for="index in 5" :key="index" class="catalog-cube-plane" :style="{ '--plane': index - 1 }" />
+        <i class="catalog-cube-axis axis-x" />
+        <i class="catalog-cube-axis axis-y" />
       </div>
       <div class="catalog-hero-actions">
         <RouterLink to="/seniors/studio"><Sparkles :size="16" />沉淀我的经验</RouterLink>
@@ -75,7 +81,7 @@
       <div class="catalog-selects">
         <label v-if="store.tags.length"><Tag :size="14" /><span class="sr-only">标签筛选</span><select v-model="store.selectedTag"><option>全部</option><option v-for="tag in store.tags" :key="tag">{{ tag }}</option></select></label>
         <label v-if="store.schools.length"><MapPin :size="14" /><span class="sr-only">学校筛选</span><select v-model="store.selectedSchool"><option>全部</option><option v-for="school in store.schools" :key="school">{{ school }}</option></select></label>
-        <label><ArrowDownWideNarrow :size="14" /><span class="sr-only">排序</span><select v-model="store.sort"><option value="updated">最近更新</option><option value="name">按名称</option></select></label>
+        <label><ArrowDownWideNarrow :size="14" /><span class="sr-only">排序</span><select v-model="store.sort"><option value="updated">最近更新</option><option value="trust">按质量评分</option><option value="name">按名称</option></select></label>
       </div>
     </div>
 

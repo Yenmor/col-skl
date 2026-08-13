@@ -389,6 +389,10 @@ onMounted(() => {
     const time = now / 1000
     const profileTarget = sceneMode.value === 'profile' ? 1 : 0
     profileProgress = reducedMotion ? profileTarget : THREE.MathUtils.clamp(profileProgress + Math.sign(profileTarget - profileProgress) * delta / 1.28, 0, 1)
+    // Keep the existing morph authoritative. Vue receives only threshold
+    // changes, avoiding reactive work during the 60 fps Three.js animation.
+    const revealPhase = profileProgress >= .94 ? 'ready' : profileProgress >= .78 ? 'outline' : 'hidden'
+    if (abilitySpace.profileRevealPhase !== revealPhase) abilitySpace.setProfileRevealPhase(revealPhase)
   const communityTarget = sceneMode.value === 'community' ? 1 : 0
     communityProgress = reducedMotion ? communityTarget : damp(communityProgress, communityTarget, communityTarget ? 3.9 : 5.5, delta)
 

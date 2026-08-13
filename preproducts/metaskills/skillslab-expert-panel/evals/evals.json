@@ -1,0 +1,26 @@
+{
+  "skill_name": "skillslab-expert-panel",
+  "evals": [
+    {
+      "id": 1,
+      "name": "panel-multi-perspective",
+      "prompt": "我大二了，想保研，但不知道绩点和竞赛哪个更重要，想听听几个不同方向学长学姐的看法。",
+      "expected_output": "调用 /api/v1/chat 获得 2-3 位不同 domain 专家，逐条呈现（名字+领域标签+正文），不合并",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "panel-followup-and-swap",
+      "prompt": "继续追问：那保研方向具体什么时候该开始联系导师？顺便换一批专家再聊聊。",
+      "expected_output": "带 sessionId 多轮追问 + excludeSeniorId 换一批，返回新一批专家",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "panel-community-search",
+      "prompt": "顺便帮我看看社区里大家是怎么讨论保研和竞赛哪个重要的。",
+      "expected_output": "调用 /api/v1/posts/search 检索，展示标题/摘要并标注仅供参考",
+      "files": []
+    }
+  ]
+}

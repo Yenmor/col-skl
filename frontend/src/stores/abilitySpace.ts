@@ -7,6 +7,9 @@ export const useAbilitySpaceStore = defineStore('ability-space', () => {
   const expandedId = ref<DomainId | null>(null)
   const homeMode = ref<'chat' | 'cube'>('chat')
   const communityPhase = ref<'idle' | 'entering' | 'open' | 'leaving'>('idle')
+  // Read-only bridge for the existing cube-to-profile morph. The cube owns
+  // the animation; profile UI receives only two threshold changes.
+  const profileRevealPhase = ref<'hidden' | 'outline' | 'ready'>('hidden')
   const cubeCommand = ref<{ id: number; type: 'left' | 'right' | 'reset' | 'motion' }>({ id: 0, type: 'reset' })
 
   function select(id: DomainId) {
@@ -25,6 +28,11 @@ export const useAbilitySpaceStore = defineStore('ability-space', () => {
     homeMode.value = 'cube'
     communityPhase.value = 'idle'
     expandedId.value = null
+    profileRevealPhase.value = 'hidden'
+  }
+
+  function setProfileRevealPhase(phase: 'hidden' | 'outline' | 'ready') {
+    profileRevealPhase.value = phase
   }
 
   function beginCommunity(id: DomainId) {
@@ -66,11 +74,13 @@ export const useAbilitySpaceStore = defineStore('ability-space', () => {
     expandedId,
     homeMode,
     communityPhase,
+    profileRevealPhase,
     cubeCommand,
     select,
     showCube,
     showChat,
     prepareProfile,
+    setProfileRevealPhase,
     beginCommunity,
     openCommunity,
     leaveCommunity,

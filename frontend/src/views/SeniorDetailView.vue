@@ -86,9 +86,9 @@
             <h2 id="trust-evidence-title">信任证据</h2>
             <p>{{ trustEvidenceSummary }}</p>
           </div>
-          <span v-if="trustEvidence" class="trust-evidence-level">
-            <strong>{{ scoreLabel(trustEvidence.overall) }}</strong>
-            <small>{{ trustEvidence.level || '综合信任待补充' }}</small>
+          <span v-if="trustEvidence" class="trust-evidence-level" :class="{ 'is-unverified': !trustEvidence.overall }">
+            <strong>{{ trustEvidence.overall ? scoreLabel(trustEvidence.overall) : '未核验' }}</strong>
+            <small>{{ trustEvidence.overall ? (trustEvidence.level || '综合信任待补充') : '等待真实来源证据' }}</small>
           </span>
         </header>
 
