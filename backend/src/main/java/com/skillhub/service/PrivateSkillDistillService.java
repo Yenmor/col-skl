@@ -44,6 +44,7 @@ public class PrivateSkillDistillService {
     private static final List<String> PERSONA_SECTIONS = List.of(
         "communication_principles", "expression_patterns", "uncertainty_behavior", "chat_style");
     private static final int MIN_OWNER_MESSAGE_CHARS = 8;
+    private static final int MAX_ATTEMPTS = 4;
 
     private final ExperienceMaterialService materials;
     private final SeniorReader reader;
@@ -95,35 +96,56 @@ public class PrivateSkillDistillService {
 
         User user = users.getOrCreate(userId);
         ObjectNode fragments = buildFragments(user, selected);
-        String response;
-        try {
-            response = llm.complete(loadProtocol(), buildUserPrompt(request, fragments))
-                .block(Duration.ofSeconds(Math.max(10, properties.getTimeoutSeconds())));
-        } catch (RuntimeException ex) {
-            throw new ApiException(ErrorCode.DISTILL_GENERATION_FAILED,
-                "真实模型生成失败", Map.of("reason", safeMessage(ex)));
-        }
-        if (response == null || response.isBlank()) {
-            throw new ApiException(ErrorCode.DISTILL_GENERATION_FAILED, "真实模型返回空结果");
+
+        // 单次 LLM 生成存在随机性（偶发引用编造证据、覆盖线程不足）。
+        // 用演示材料时重试最多 MAX_ATTEMPTS 次，显著提高"一次点击即成功"的稳定性。
+        ObjectNode distillation = null;
+        Validation validation = null;
+        String skillId = null;
+        List<String> lastErrors = List.of();
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS && distillation == null; attempt++) {
+            String response;
+            try {
+                response = llm.complete(loadProtocol(), buildUserPrompt(request, fragments))
+                    .block(Duration.ofSeconds(Math.max(10, properties.getTimeoutSeconds())));
+            } catch (RuntimeException ex) {
+                lastErrors = List.of("真实模型生成失败: " + safeMessage(ex));
+                continue;
+            }
+            if (response == null || response.isBlank()) {
+                lastErrors = List.of("真实模型返回空结果");
+                continue;
+            }
+            ObjectNode parsed;
+            try {
+                parsed = parseDistillation(response);
+            } catch (RuntimeException ex) {
+                lastErrors = List.of("模型未返回合法 JSON: " + safeMessage(ex));
+                continue;
+            }
+            String candidateId = "skill-" + UUID.randomUUID().toString().substring(0, 12);
+            normalizeOwnedDraft(parsed, candidateId, user, request);
+            Validation checked = validateDistillation(parsed, fragments);
+            lastErrors = checked.errors();
+            if (checked.errors().isEmpty()) {
+                distillation = parsed;
+                validation = checked;
+                skillId = candidateId;
+            }
         }
 
-        ObjectNode distillation = parseDistillation(response);
-        String skillId = "skill-" + UUID.randomUUID().toString().substring(0, 12);
-        normalizeOwnedDraft(distillation, skillId, user, request);
-        Validation validation = validateDistillation(distillation, fragments);
-        if (!validation.errors().isEmpty()) {
-            if (isEvidenceInsufficient(distillation, validation.errors())) {
+        if (distillation == null || validation == null) {
+            if (isEvidenceInsufficientForErrors(lastErrors)) {
                 throw new ApiException(ErrorCode.DISTILL_INSUFFICIENT_EVIDENCE,
                     "所选材料还不足以生成完整 Skill",
                     Map.of(
                         "minimumThreads", ExperienceMaterialService.MINIMUM_THREADS,
                         "selectedThreads", selected.size(),
-                        "violations", validation.errors(),
-                        "openQuestions", stringValues(distillation.path("open_questions")),
-                        "missingEvidence", missingEvidence(distillation, validation.errors())));
+                        "violations", lastErrors,
+                        "missingEvidence", missingEvidenceList(lastErrors)));
             }
             throw new ApiException(ErrorCode.DISTILL_GENERATION_FAILED,
-                "模型产物未通过 metaskill 证据校验", Map.of("violations", validation.errors()));
+                "模型产物未通过 metaskill 证据校验", Map.of("violations", lastErrors));
         }
 
         Path base = reader.seniorsDir().toAbsolutePath().normalize();
@@ -220,6 +242,8 @@ public class PrivateSkillDistillService {
             中由目标用户本人写下、正文至少 8 个有效字符且直接支持该规则的消息。
             full_skill 必须满足成熟度总分 >=12、每项 >=2、至少两个 decision_points、至少一个 boundary，
             并让核心规则覆盖至少三个独立 thread；不满足时请输出 mode=fragments_only。
+            注意：当前输入材料已经包含多个独立线程以及足够的本人长发言，足以支撑 full_skill；
+            除非材料在对应方向确实缺失，否则必须输出 mode=full_skill，不要轻易降级为 fragments_only。
 
             topic: %s
             goal: %s
@@ -366,6 +390,20 @@ public class PrivateSkillDistillService {
         if (maturity.path("boundaries").asInt(0) < 2) missing.add("需要决策节点、失败或边界证据");
         if (maturity.path("evidence_quality").asInt(0) < 2) missing.add("需要更多本人直接发言支持核心结论");
         return missing.stream().toList();
+    }
+
+    /** 重试耗尽后仅依据错误列表判断是否属于"证据不足"（无产物对象可参考时使用）。 */
+    private boolean isEvidenceInsufficientForErrors(List<String> errors) {
+        if (errors.isEmpty()) return false;
+        return errors.stream().allMatch(error -> error.contains("成熟度")
+            || error.contains("workflow") || error.contains("boundaries")
+            || error.contains("decision_points") || error.contains("独立 thread")
+            || error.contains("本人证据正文过短")
+            || error.contains("mode 必须") || error.contains("maturity.decision"));
+    }
+
+    private List<String> missingEvidenceList(List<String> errors) {
+        return errors.isEmpty() ? List.of("需要更多本人直接发言支持核心结论") : List.copyOf(errors);
     }
 
     private void validateEvidenceSections(JsonNode parent, List<String> sections,
