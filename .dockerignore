@@ -1,0 +1,14 @@
+**/node_modules
+**/target
+**/dist
+**/*.db
+**/*.db-*
+合并对象
+.git
+.gitignore
+*.zip
+.playwright-cli
+session-*.md
+.env
+.env.*
+!.env.example

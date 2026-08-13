@@ -3311,6 +3311,12 @@
   transform-origin: center;
 }
 
+/* 画像数据到达前不渲染分数条：避免“先归零再伸展”的假动画。
+   ::after 无 width 过渡，score-ready 后同帧直接显示最终分数。 */
+.profile-page .profile-axis:not(.score-ready) .axis-track::after {
+  opacity: 0;
+}
+
 .profile-page .axis-detail-actions > button {
   display: inline-flex;
   align-items: center;

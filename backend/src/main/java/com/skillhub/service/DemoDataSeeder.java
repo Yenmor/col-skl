@@ -267,9 +267,9 @@ public class DemoDataSeeder {
     }
 
     private void saveUser(String id, String name) {
-        if (!users.existsById(id)) {
-            users.save(new User(id, name, null, "GUEST", Instant.parse("2026-08-01T00:00:00Z")));
-        }
+        // 无条件 upsert：默认登录身份(演示同学)可能先被 getOrCreate 以“游客#xxxx”
+        // 懒创建过，这里必须把展示名覆盖回演示名（UserRepository.save 是 ON CONFLICT DO UPDATE）。
+        users.save(new User(id, name, null, "GUEST", Instant.parse("2026-08-01T00:00:00Z")));
     }
 
     private void savePost(Post post) {

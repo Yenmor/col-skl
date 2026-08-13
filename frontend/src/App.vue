@@ -15,6 +15,8 @@ const current = computed(() => {
 })
 onMounted(() => {
   document.documentElement.lang = 'zh-CN'
+  // 预加载能力画像：用户点进 /me 前分数已就绪，立方体 morph 直接收缩到真实值
+  void abilitySpace.preloadProfile()
 })
 </script>
 

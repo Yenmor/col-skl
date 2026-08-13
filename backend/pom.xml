@@ -77,6 +77,15 @@
           </excludes>
         </configuration>
       </plugin>
+      <!-- Mockito inline mock maker 在 Microsoft JDK 21 上需要显式允许 self-attach，
+           否则报 "Could not initialize plugin: org.mockito.plugins.MockMaker" -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <argLine>-Djdk.attach.allowAttachSelf=true</argLine>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 </project>

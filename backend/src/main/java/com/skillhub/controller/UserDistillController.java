@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 /** Current-user-only distillation API. It never accepts a caller-supplied user id. */
 @RestController
@@ -31,8 +33,9 @@ public class UserDistillController {
     }
 
     @PostMapping("/skills/distill")
-    public DistillDraftResponse distill(@RequestHeader("X-User-Id") String userId,
-                                        @RequestBody DistillDraftRequest request) {
-        return distill.distill(userId, request);
+    public Mono<DistillDraftResponse> distill(@RequestHeader("X-User-Id") String userId,
+                                              @RequestBody DistillDraftRequest request) {
+        return Mono.fromCallable(() -> distill.distill(userId, request))
+            .subscribeOn(Schedulers.boundedElastic());
     }
 }

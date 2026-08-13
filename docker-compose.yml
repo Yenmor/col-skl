@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: skillslab-backend:latest
+    restart: unless-stopped
+    environment:
+      SKILLHUB_SEED_COMMUNITY: "true"
+      LLM_PROVIDER: deepseek
+    env_file:
+      - .env.deploy
+    volumes:
+      - skillhub-data:/app/data
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    image: skillslab-frontend:latest
+    restart: unless-stopped
+    ports:
+      - "8131:80"
+    depends_on:
+      - backend
+
+volumes:
+  skillhub-data:

@@ -50,24 +50,19 @@ const http: AxiosInstance = axios.create({
 
 const USER_ID_KEY = 'persist.userId';
 
-function newUuid(): Uuid {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
+/**
+ * 默认登录身份：后端 DemoDataSeeder 预置的「演示同学」。
+ * 新访客首次访问即以此身份进入，能力画像/沉淀材料开箱即显示；
+ * localStorage 已有身份的老访客保留原值。
+ */
+const DEFAULT_USER_ID: Uuid = '11111111-1111-4111-8111-111111111111';
 
 export function getOrCreateUserId(): Uuid {
-  if (typeof localStorage === 'undefined') return newUuid();
+  if (typeof localStorage === 'undefined') return DEFAULT_USER_ID;
   const cached = localStorage.getItem(USER_ID_KEY);
   if (cached) return cached;
-  const fresh = newUuid();
-  localStorage.setItem(USER_ID_KEY, fresh);
-  return fresh;
+  localStorage.setItem(USER_ID_KEY, DEFAULT_USER_ID);
+  return DEFAULT_USER_ID;
 }
 
 function authHeader(): Record<string, string> {

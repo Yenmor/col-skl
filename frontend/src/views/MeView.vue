@@ -24,8 +24,10 @@
           <svg viewBox="0 0 120 120" role="img" :aria-label="radarAriaLabel">
             <polygon v-for="scale in [1, .75, .5, .25]" :key="scale" :points="radarPoints(scale)" class="radar-grid" />
             <line v-for="point in radarVertices" :key="`${point.x}-${point.y}`" x1="60" y1="60" :x2="point.x" :y2="point.y" />
-            <polygon :points="abilityPolygon" class="radar-score" />
-            <circle v-for="point in abilityVertices" :key="`${point.x}-${point.y}`" :cx="point.x" :cy="point.y" r="2.3" />
+            <template v-if="profileReady">
+              <polygon :points="abilityPolygon" class="radar-score" />
+              <circle v-for="point in abilityVertices" :key="`${point.x}-${point.y}`" :cx="point.x" :cy="point.y" r="2.3" />
+            </template>
           </svg>
           <div>
             <span v-for="domain in profileDomains" :key="domain.id">
@@ -48,7 +50,7 @@
             :key="domain.id"
             class="profile-axis"
             :data-axis-index="index"
-            :class="{ expanded: expandedId === domain.id, muted: expandedId && expandedId !== domain.id }"
+            :class="{ expanded: expandedId === domain.id, muted: expandedId && expandedId !== domain.id, 'score-ready': profileReady }"
             :style="{ '--domain-color': domain.color, '--domain-ink': domain.ink, '--domain-tint': domain.tint, '--score': `${domain.score}%`, '--delay': `${index * 45}ms` }"
           >
             <button
@@ -251,6 +253,7 @@ import {
 import { customTopicPresets, saveCustomLayerPreference, skillDomains, type DomainId } from '../domain'
 import TopBar from '../components/skillslab/SkillsProfileTopBar.vue'
 import { getOrCreateUserId, postsApi, request, skillsApi, usersApi } from '../services/api-v1'
+import { buildProfileQuery } from '../services/abilityProfile'
 import { useAbilitySpaceStore } from '../stores/abilitySpace'
 import type { SkillRecallItem } from '../types/api-v1'
 
@@ -591,17 +594,7 @@ function savePersonalLayer() {
 }
 
 function profileRequestUrl() {
-  const fifthLayer = domainFor('custom')
-  const directions = profileDomains.value.map(domain => ({
-    id: domain.id,
-    name: domain.name,
-    branches: domain.branches.map(branch => ({ name: branch.name, note: branch.note })),
-  }))
-  const query = new URLSearchParams({
-    fifthLayerName: fifthLayer.name,
-    directions: JSON.stringify(directions),
-  })
-  return `/me/ability-profile?${query.toString()}`
+  return buildProfileQuery()
 }
 
 function remoteDomainFor(local: ProfileDomain, remote: AbilityProfile) {
@@ -630,8 +623,15 @@ function applyAbilityProfile(remote: AbilityProfile) {
 }
 
 async function refreshProfile() {
-  profileLoading.value = true
   profileError.value = ''
+  // App 启动时已预加载：有缓存直接渲染真实分数（首帧无空窗），
+  // 随后仍发请求刷新兜底（深链接直接进 /me、或预取失败时）。
+  const cached = abilitySpace.abilityProfile
+  if (cached) {
+    applyAbilityProfile(cached)
+    void loadRecommendation(cached)
+  }
+  profileLoading.value = true
   try {
     const remote = await request<AbilityProfile>('GET', profileRequestUrl())
     applyAbilityProfile(remote)
@@ -813,7 +813,6 @@ async function loadCommunityTopics() {
 
 onMounted(() => {
   abilitySpace.prepareProfile()
-  skillDomains.forEach(domain => { domain.score = 0 })
   window.addEventListener('keydown', onKeydown)
   void usersApi.getMe().then(user => { displayName.value = user.displayName || '我' }).catch(() => undefined)
   void refreshProfile()

@@ -242,14 +242,38 @@ function generationMessage(cause: unknown) {
   if (!(cause instanceof SkillApiError)) return { title: '草稿生成失败', detail: '请稍后重试；本次不会保留半成品。' }
   if (cause.code === 'DISTILL_LLM_UNAVAILABLE') return { title: '真实模型尚未配置', detail: '材料未提交到 mock，当前不会生成占位草稿。' }
   if (cause.code === 'DISTILL_INSUFFICIENT_EVIDENCE') {
-    const details = cause.details as { minimumThreads?: number; selectedThreads?: number; missingThreads?: number } | undefined
-    const minimum = details?.minimumThreads ?? materials.value?.minimumThreads ?? 3
-    const selected = details?.selectedThreads ?? selectedIds.value.length
-    const missing = details?.missingThreads ?? Math.max(0, minimum - selected)
-    return { title: '独立线程证据不足', detail: `后端确认需要 ${minimum} 个独立线程；当前有效 ${selected} 个，还缺 ${missing} 个。` }
+    const details = cause.details as {
+      minimumThreads?: number; selectedThreads?: number; missingThreads?: number;
+      violations?: string[]; missingEvidence?: string[]; openQuestions?: string[];
+    } | undefined
+    const missing = details?.missingThreads ?? 0
+    if (missing > 0) {
+      const minimum = details?.minimumThreads ?? materials.value?.minimumThreads ?? 3
+      const selected = details?.selectedThreads ?? selectedIds.value.length
+      return { title: '独立线程证据不足', detail: `沉淀一个 Skill 至少需要 ${minimum} 个本人发帖或回复过的独立线程，当前有效 ${selected} 个，还缺 ${missing} 个。` }
+    }
+    const violations = details?.violations ?? []
+    const missingEvidence = details?.missingEvidence ?? []
+    const reason = evidenceInsufficientReason(violations)
+    const suggestions = missingEvidence.map(item => `· ${item}`)
+    const detail = [reason, ...suggestions].filter(Boolean).join('\n')
+      + (suggestions.length ? '\n建议优先选择本人深度参与、发言较长的线程，再重新生成。' : '')
+    return { title: '材料证据不足', detail }
   }
   if (cause.code === 'DISTILL_GENERATION_FAILED') return { title: '草稿生成失败', detail: `${cause.message}。本次不会保留半成品。` }
   return { title: '草稿生成失败', detail: cause.message || '请稍后重试；本次不会保留半成品。' }
+}
+
+function evidenceInsufficientReason(violations: string[]): string {
+  const all = violations.join('\n')
+  if (all.includes('未知证据')) return '生成的草稿引用了不存在的证据编号，请重新生成试试。'
+  if (all.includes('独立 thread')) return '草稿的核心规则只覆盖了部分独立线程，需要覆盖 3 个以上。'
+  if (all.includes('本人证据正文过短')) return '部分被引用的本人发言太短（不足 8 个字），无法支撑证据链。'
+  if (all.includes('message_id 不属于')) return '草稿引用了不属于本人的消息作为证据。'
+  if (all.includes('mode 必须') || all.includes('maturity.decision')) return '模型判断当前材料不足以生成完整 Skill，只能沉淀为经验片段。'
+  if (all.includes('成熟度')) return '生成结果未达到成熟度要求（总分不低于 12、各项不低于 2）。'
+  if (all.includes('workflow') || all.includes('boundaries') || all.includes('decision_points')) return '草稿缺少必要章节（执行流程、能力边界或决策节点）。'
+  return violations[0] || '所选材料暂时不足以生成完整 Skill，请补充更多本人参与的高质量讨论后再试。'
 }
 
 async function downloadDraft() {
