@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { getOrCreateUserId } from './api-v1'
+import { getOrCreateUserId, newUuid } from './api-v1'
 import { normalizeTrust } from '../skillFit'
 import type {
   DistillSkillRequest,
@@ -341,7 +341,7 @@ function saveSkillGrowthFeedback(skillId: string, items: SkillGrowthFeedback[]) 
 export function submitSkillGrowthFeedback(skillId: string, kind: SkillGrowthKind, body: string) {
   const items = loadSkillGrowthFeedback(skillId)
   return saveSkillGrowthFeedback(skillId, [{
-    id: crypto.randomUUID(), kind, authorName: '演示同学', body: body.trim(),
+    id: newUuid(), kind, authorName: '演示同学', body: body.trim(),
     createdAt: new Date().toISOString(), authorDecision: 'PENDING', platformDecision: 'PENDING', demo: true,
   }, ...items])
 }

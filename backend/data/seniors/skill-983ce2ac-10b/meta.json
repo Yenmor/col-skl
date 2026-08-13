@@ -1,0 +1,35 @@
+{
+  "schema_version" : "1.0",
+  "skill_id" : "skill-983ce2ac-10b",
+  "name" : "演示同学 · 学习科研",
+  "owner_id" : "11111111-1111-4111-8111-111111111111",
+  "visibility" : "PRIVATE",
+  "identity" : {
+    "user_id" : "11111111-1111-4111-8111-111111111111",
+    "display_name" : "演示同学",
+    "school" : "示例大学",
+    "college" : "示例学院",
+    "major" : "示例专业",
+    "year_graduated" : ""
+  },
+  "lifecycle" : {
+    "version" : "v0.1-draft",
+    "status" : "draft",
+    "generated_at" : "2026-08-13T15:47:49.357510800Z"
+  },
+  "review" : {
+    "author_confirmed" : false,
+    "status" : "draft",
+    "confirmed_at" : null,
+    "confirmed_by" : null
+  },
+  "maturity" : {
+    "coverage" : 3,
+    "repeatability" : 3,
+    "boundaries" : 3,
+    "evidence_quality" : 3,
+    "total" : 12,
+    "decision" : "full_skill",
+    "rationale" : "覆盖学习、科研、竞赛、表达多个线程，核心方法有跨帖证据且含边界与停止条件。"
+  }
+}

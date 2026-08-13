@@ -51,18 +51,30 @@ const http: AxiosInstance = axios.create({
 const USER_ID_KEY = 'persist.userId';
 
 /**
- * 默认登录身份：后端 DemoDataSeeder 预置的「演示同学」。
- * 新访客首次访问即以此身份进入，能力画像/沉淀材料开箱即显示；
- * localStorage 已有身份的老访客保留原值。
+ * 生成匿名用户 ID。crypto.randomUUID 仅在安全上下文（HTTPS/localhost）可用，
+ * 生产 HTTP 环境回退到时间戳 + 随机数，输出合法 8-4-4-4-12 UUID 格式。
  */
-const DEFAULT_USER_ID: Uuid = '11111111-1111-4111-8111-111111111111';
+export function newUuid(): Uuid {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+  const hex = (n: number, width: number) => n.toString(16).padStart(width, '0');
+  const rand = (width: number) => Math.floor(Math.random() * Math.pow(16, width));
+  const t = Math.floor(Date.now() / 1000);
+  const variant = hex(8 + Math.floor(Math.random() * 4), 1);
+  return `${hex(t % 0x100000000, 8)}-${hex(rand(4), 4)}-4${hex(rand(3), 3)}-${variant}${hex(rand(3), 3)}-${hex(rand(6), 6)}${hex(rand(6), 6)}`;
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function getOrCreateUserId(): Uuid {
-  if (typeof localStorage === 'undefined') return DEFAULT_USER_ID;
+  if (typeof localStorage === 'undefined') return newUuid();
   const cached = localStorage.getItem(USER_ID_KEY);
-  if (cached) return cached;
-  localStorage.setItem(USER_ID_KEY, DEFAULT_USER_ID);
-  return DEFAULT_USER_ID;
+  // 历史缺陷版本可能写入过畸形 ID，检测到非法格式时重置为新的随机身份。
+  if (cached && UUID_PATTERN.test(cached)) return cached;
+  const fresh = newUuid();
+  localStorage.setItem(USER_ID_KEY, fresh);
+  return fresh;
 }
 
 function authHeader(): Record<string, string> {

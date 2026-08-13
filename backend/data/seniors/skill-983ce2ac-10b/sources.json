@@ -1,0 +1,55 @@
+{
+  "skill_id" : "skill-983ce2ac-10b",
+  "version" : "v0.1-draft",
+  "verification" : "PLATFORM_VERIFIED",
+  "fragment_ids" : [ "frag_a8b52e028b", "frag_bf58a73f8b", "frag_eb2137895e", "frag_585082769f", "frag_5819cd05a2", "frag_a2d388c3c5", "frag_a2361cffcc", "frag_aa8f5a68e8" ],
+  "fragments" : [ {
+    "fragment_id" : "frag_a8b52e028b",
+    "thread_id" : "demo-study-review",
+    "title" : "我把期末复盘改成了一张知识拆解表",
+    "source_message_ids" : [ "demo-study-review" ],
+    "target_message_ids" : [ "demo-study-review" ]
+  }, {
+    "fragment_id" : "frag_bf58a73f8b",
+    "thread_id" : "demo-research-experiment",
+    "title" : "第一次独立复现实验，我保留了哪些记录",
+    "source_message_ids" : [ "demo-research-experiment" ],
+    "target_message_ids" : [ "demo-research-experiment" ]
+  }, {
+    "fragment_id" : "frag_eb2137895e",
+    "thread_id" : "demo-study-notes",
+    "title" : "把散落笔记重构成一张复习地图",
+    "source_message_ids" : [ "demo-study-notes" ],
+    "target_message_ids" : [ "demo-study-notes" ]
+  }, {
+    "fragment_id" : "frag_585082769f",
+    "thread_id" : "peer-research-lab",
+    "title" : "复现实验换一台电脑就跑不出同样结果",
+    "source_message_ids" : [ "demo-comment-research-lab-1", "demo-comment-research-lab-2" ],
+    "target_message_ids" : [ "demo-comment-research-lab-1", "demo-comment-research-lab-2" ]
+  }, {
+    "fragment_id" : "frag_5819cd05a2",
+    "thread_id" : "peer-study-explain",
+    "title" : "给同学讲题时，总是讲着讲着自己也乱了",
+    "source_message_ids" : [ "demo-comment-study-explain" ],
+    "target_message_ids" : [ "demo-comment-study-explain" ]
+  }, {
+    "fragment_id" : "frag_a2d388c3c5",
+    "thread_id" : "demo-competition-pitch",
+    "title" : "答辩表达只留一条主线后，评委终于听懂了",
+    "source_message_ids" : [ "demo-competition-pitch" ],
+    "target_message_ids" : [ "demo-competition-pitch" ]
+  }, {
+    "fragment_id" : "frag_a2361cffcc",
+    "thread_id" : "demo-club-workshop",
+    "title" : "社团工作坊从报名到复盘的完整记录",
+    "source_message_ids" : [ "demo-club-workshop" ],
+    "target_message_ids" : [ "demo-club-workshop" ]
+  }, {
+    "fragment_id" : "frag_aa8f5a68e8",
+    "thread_id" : "demo-competition-retro",
+    "title" : "数模三人组前 24 小时怎么推进",
+    "source_message_ids" : [ "demo-competition-retro" ],
+    "target_message_ids" : [ "demo-competition-retro" ]
+  } ]
+}

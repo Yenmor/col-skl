@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { chatApi } from '../services/api-v1';
-import { getOrCreateUserId } from '../services/api-v1';
+import { getOrCreateUserId, newUuid } from '../services/api-v1';
 import type { ChatAnswer, ChatResponseV1 } from '../types/api-v1';
 
 const SESSION_KEY = 'persist.sessionId';
@@ -49,11 +49,11 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function addUser(content: string) {
-    messages.value.push({ id: crypto.randomUUID(), role: 'user', content });
+    messages.value.push({ id: newUuid(), role: 'user', content });
   }
 
   function addAssistantPlaceholder() {
-    const id = crypto.randomUUID();
+    const id = newUuid();
     messages.value.push({
       id,
       role: 'assistant',
@@ -108,7 +108,7 @@ export const useChatStore = defineStore('chat', () => {
       if (i > 0) await sleep(PANEL_REVEAL_DELAY);
       const expert = experts[i];
       messages.value.push({
-        id: crypto.randomUUID(),
+        id: newUuid(),
         role: 'assistant',
         content: expert.content,
         answers: [expert],
@@ -122,10 +122,11 @@ export const useChatStore = defineStore('chat', () => {
     if (loading.value || !text.trim()) return;
     loading.value = true;
     error.value = null;
-    addUser(text);
-    const pendingId = addAssistantPlaceholder();
+    let pendingId = '';
 
     try {
+      addUser(text);
+      pendingId = addAssistantPlaceholder();
       const resp: ChatResponseV1 = await chatApi.send({
         message: text,
         sessionId: sessionId.value || undefined,
@@ -145,7 +146,7 @@ export const useChatStore = defineStore('chat', () => {
       }
       await applyAnswers(pendingId, answers);
     } catch (e) {
-      const msg = messages.value.find(m => m.id === pendingId);
+      const msg = pendingId ? messages.value.find(m => m.id === pendingId) : undefined;
       if (msg) { msg.content = '暂时无法连接服务器，请稍后重试。'; msg.isStreaming = false; }
       error.value = (e as Error).message;
     } finally {
@@ -159,8 +160,9 @@ export const useChatStore = defineStore('chat', () => {
     if (!lastUser || loading.value) return;
 
     loading.value = true;
-    const pendingId = addAssistantPlaceholder();
+    let pendingId = '';
     try {
+      pendingId = addAssistantPlaceholder();
       const resp: ChatResponseV1 = await chatApi.send({
         message: lastUser.content,
         sessionId: sessionId.value || undefined,
@@ -176,7 +178,7 @@ export const useChatStore = defineStore('chat', () => {
       }
       await applyAnswers(pendingId, answers);
     } catch (e) {
-      const msg = messages.value.find(m => m.id === pendingId);
+      const msg = pendingId ? messages.value.find(m => m.id === pendingId) : undefined;
       if (msg) { msg.content = '切换失败，请重试。'; msg.isStreaming = false; }
       error.value = (e as Error).message;
     } finally {
@@ -192,7 +194,7 @@ export const useChatStore = defineStore('chat', () => {
       let panel: ExpertAnswer[] = [];
       for (const row of rows.reverse()) {
         if (row.role === 'user') {
-          restored.push({ id: crypto.randomUUID(), role: 'user', content: row.content ?? '' });
+          restored.push({ id: newUuid(), role: 'user', content: row.content ?? '' });
           continue;
         }
         if (Array.isArray(row.answers) && row.answers.length > 0) {
@@ -206,12 +208,12 @@ export const useChatStore = defineStore('chat', () => {
             content: a.content ?? '',
           }));
           for (const expert of experts) {
-            restored.push({ id: crypto.randomUUID(), role: 'assistant', content: expert.content, answers: [expert] });
+            restored.push({ id: newUuid(), role: 'assistant', content: expert.content, answers: [expert] });
           }
           panel = experts;
           continue;
         }
-        restored.push({ id: crypto.randomUUID(), role: 'assistant', content: row.content ?? '' });
+        restored.push({ id: newUuid(), role: 'assistant', content: row.content ?? '' });
       }
       messages.value = restored;
       activePanel.value = panel;

@@ -164,6 +164,10 @@ public class ChatOrchestrator {
         }
     }
 
+    /** 聊天场景：短回答。token 上限与超时都比全局（沉淀长输出）配置更紧，避免长文本拖满超时。 */
+    private static final int CHAT_MAX_TOKENS = 900;
+    private static final int CHAT_TIMEOUT_SECONDS = 60;
+
     private SeniorAnswer answerFor(ScoredCandidate scored, String message) {
         SeniorReader.SeniorCandidate c = scored.c();
         SeniorSkill senior = findById(c.id());
@@ -171,8 +175,8 @@ public class ChatOrchestrator {
         String prompt = buildSystemPrompt(senior, c, skillMd, message);
         String content;
         try {
-            content = llm.complete(prompt, message)
-                .block(Duration.ofSeconds(Math.max(5, properties.getTimeoutSeconds())));
+            content = llm.complete(prompt, message, CHAT_MAX_TOKENS, CHAT_TIMEOUT_SECONDS)
+                .block(Duration.ofSeconds(Math.max(5, CHAT_TIMEOUT_SECONDS + 10)));
             if (content == null || content.isBlank()) {
                 throw new IllegalStateException("LLM 返回了空回答");
             }

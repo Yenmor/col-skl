@@ -23,7 +23,8 @@ export const useAbilitySpaceStore = defineStore('ability-space', () => {
       const found = profile.domains.find(domain => domain.id === local.id
         || domain.name === local.name
         || local.aliases.some(alias => alias && domain.name.includes(alias)))
-      if (found) local.score = found.score
+      // 新访客后端返回全 0：保留 domain.ts 的预制演示分，避免画像空窗。
+      if (found && found.score > 0) local.score = found.score
     }
   }
 

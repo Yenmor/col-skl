@@ -1,0 +1,31 @@
+{
+  "skill_id" : "skill-cb4af5d2-1ab",
+  "version" : "v0.1-draft",
+  "verification" : "PLATFORM_VERIFIED",
+  "fragment_ids" : [ "frag_a2d388c3c5", "frag_c767f00a03", "frag_0b8cc42213", "frag_0973e549f7" ],
+  "fragments" : [ {
+    "fragment_id" : "frag_a2d388c3c5",
+    "thread_id" : "demo-competition-pitch",
+    "title" : "答辩表达只留一条主线后，评委终于听懂了",
+    "source_message_ids" : [ "demo-competition-pitch" ],
+    "target_message_ids" : [ "demo-competition-pitch" ]
+  }, {
+    "fragment_id" : "frag_c767f00a03",
+    "thread_id" : "peer-skill-question",
+    "title" : "第一次做项目路演，五分钟应该留下什么",
+    "source_message_ids" : [ "demo-comment-skill" ],
+    "target_message_ids" : [ "demo-comment-skill" ]
+  }, {
+    "fragment_id" : "frag_0b8cc42213",
+    "thread_id" : "demo-skill-project",
+    "title" : "校园项目展示前，我怎样整理数据和故事",
+    "source_message_ids" : [ "demo-skill-project" ],
+    "target_message_ids" : [ "demo-skill-project" ]
+  }, {
+    "fragment_id" : "frag_0973e549f7",
+    "thread_id" : "peer-research-question",
+    "title" : "读论文时总抓不到作者真正解决的问题",
+    "source_message_ids" : [ "demo-comment-research" ],
+    "target_message_ids" : [ "demo-comment-research" ]
+  } ]
+}

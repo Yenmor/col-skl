@@ -30,6 +30,13 @@ public class DeepSeekLlmClient implements LlmClient {
 
     @Override
     public Mono<String> complete(String systemPrompt, String userMessage) {
+        return complete(systemPrompt, userMessage,
+            properties.getDeepseek().getMaxTokens(), properties.getTimeoutSeconds());
+    }
+
+    @Override
+    public Mono<String> complete(String systemPrompt, String userMessage,
+                                 int maxTokens, int timeoutSeconds) {
         String apiKey = properties.getDeepseek().getApiKey();
         if (apiKey == null || apiKey.isBlank()) {
             return Mono.error(new IllegalStateException("DEEPSEEK_API_KEY 未配置"));
@@ -38,7 +45,7 @@ public class DeepSeekLlmClient implements LlmClient {
         ObjectNode body = json.createObjectNode();
         body.put("model", properties.getDeepseek().getModel());
         body.put("temperature", 0.7);
-        body.put("max_tokens", properties.getDeepseek().getMaxTokens());
+        body.put("max_tokens", maxTokens);
         body.put("stream", false);
         ArrayNode messages = body.putArray("messages");
         messages.addObject().put("role", "system").put("content", systemPrompt);
@@ -50,7 +57,7 @@ public class DeepSeekLlmClient implements LlmClient {
             .bodyValue(body)
             .retrieve()
             .bodyToMono(JsonNode.class)
-            .timeout(Duration.ofSeconds(Math.max(5, properties.getTimeoutSeconds())))
+            .timeout(Duration.ofSeconds(Math.max(5, timeoutSeconds)))
             .map(response -> {
                 JsonNode content = response.path("choices").path(0).path("message").path("content");
                 if (!content.isTextual() || content.asText().isBlank()) {

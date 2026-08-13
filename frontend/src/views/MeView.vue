@@ -407,12 +407,22 @@ const toast = ref('')
 let toastTimer = 0
 
 const profileReady = computed(() => Boolean(abilityProfile.value))
-const totalScore = computed(() => abilityProfile.value?.total ?? null)
+const totalScore = computed(() => {
+  const remote = abilityProfile.value?.total
+  if (remote && remote > 0) return remote
+  if (profileReady.value && evidenceTotal.value === 0) {
+    // 演示画像：后端总分 0 时展示预制分数的均值，避免总分空窗。
+    return Math.round(profileDomains.value.reduce((sum, domain) => sum + domain.score, 0)
+      / Math.max(1, profileDomains.value.length))
+  }
+  return abilityProfile.value ? remote ?? 0 : null
+})
 const evidenceTotal = computed(() => abilityProfile.value?.domains.reduce((total, domain) => total + evidenceOf(domain).total, 0) ?? 0)
 const profileEvidenceLabel = computed(() => {
   if (profileLoading.value && !abilityProfile.value) return '正在读取真实证据…'
   if (profileError.value && !abilityProfile.value) return '能力画像暂时不可用'
   if (!abilityProfile.value) return '尚未载入能力证据'
+  if (evidenceTotal.value === 0) return `演示画像 · ${profileDomains.value.length} 个能力层（参与社区讨论后可沉淀真实证据）`
   return `${evidenceTotal.value} 项可追溯证据 · ${profileDomains.value.length} 个能力层`
 })
 const radarAriaLabel = computed(() => profileReady.value
@@ -607,7 +617,9 @@ function applyAbilityProfile(remote: AbilityProfile) {
   abilityProfile.value = remote
   profileDomains.value = profileDomains.value.map(local => {
     const found = remoteDomainFor(local, remote)
-    if (!found) return { ...local, score: 0, evidence: { ...EMPTY_EVIDENCE }, branches: local.branches.map(branch => ({ ...branch, score: 0, evidence: { ...EMPTY_EVIDENCE } })) }
+    // 新访客后端返回全 0：保留 domain.ts 预制演示分，画像不空窗。
+    const presetScore = local.score > 0 ? local.score : (skillDomains.find(domain => domain.id === local.id)?.score ?? 0)
+    if (!found) return { ...local, score: presetScore, evidence: { ...EMPTY_EVIDENCE }, branches: local.branches.map(branch => ({ ...branch, score: 0, evidence: { ...EMPTY_EVIDENCE } })) }
     const remoteBranches: PersonalBranch[] = found.branches.map(branch => ({
       ...branch,
       evidence: evidenceOf(branch),
@@ -616,9 +628,10 @@ function applyAbilityProfile(remote: AbilityProfile) {
     const missingCustom = local.branches
       .filter(branch => branch.custom && !remoteBranches.some(item => item.name === branch.name))
       .map(branch => ({ ...branch, score: 0, evidence: { ...EMPTY_EVIDENCE } }))
+    const score = found.score > 0 ? found.score : presetScore
     const sharedDomain = skillDomains.find(domain => domain.id === local.id)
-    if (sharedDomain) sharedDomain.score = found.score
-    return { ...local, name: found.name || local.name, score: found.score, evidence: evidenceOf(found), branches: [...remoteBranches, ...missingCustom] }
+    if (sharedDomain) sharedDomain.score = score
+    return { ...local, name: found.name || local.name, score, evidence: evidenceOf(found), branches: [...remoteBranches, ...missingCustom] }
   })
 }
 

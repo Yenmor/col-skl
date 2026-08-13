@@ -1,0 +1,14 @@
+{
+  "id" : "skill-983ce2ac-10b",
+  "name" : "演示同学 · 学习科研",
+  "domain" : "学习",
+  "avatar" : "avatar.svg",
+  "description" : "把复杂概念拆成可讲清的结构，用记录和验证代替感觉，适合做学习与科研上的同伴参考。",
+  "triggers" : [ "学习", "科研", "复现", "复盘", "讲题", "实验记录", "答辩", "竞赛" ],
+  "source" : "distilled",
+  "version" : "v0.1-draft",
+  "reviewStatus" : "draft",
+  "layerId" : "skills",
+  "ownerId" : "11111111-1111-4111-8111-111111111111",
+  "visibility" : "PRIVATE"
+}
