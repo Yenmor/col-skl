@@ -74,8 +74,8 @@ export const useChatStore = defineStore('chat', () => {
     tick();
   }
 
-  /** 发送消息：自动选 skill（top-1），回答以流式呈现 */
-  async function send(text: string) {
+  /** 发送消息：可锁定指定 Skill；未指定时自动召回 top-1，回答以流式呈现 */
+  async function send(text: string, seniorId?: string) {
     if (loading.value || !text.trim()) return;
     loading.value = true;
     error.value = null;
@@ -86,6 +86,7 @@ export const useChatStore = defineStore('chat', () => {
       const resp: ChatResponseV1 = await chatApi.send({
         message: text,
         sessionId: sessionId.value || undefined,
+        seniorId: seniorId || undefined,
       });
       sessionId.value = resp.sessionId;
       saveSession(resp.sessionId);

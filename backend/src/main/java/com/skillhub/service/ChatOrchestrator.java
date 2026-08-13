@@ -3,6 +3,8 @@ package com.skillhub.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skillhub.config.LlmProperties;
+import com.skillhub.config.ApiException;
+import com.skillhub.dto.ErrorCode;
 import com.skillhub.model.SeniorSkill;
 import com.skillhub.repo.SeniorFragmentRepository;
 import com.skillhub.repo.SeniorSkillRepository;
@@ -86,6 +88,28 @@ public class ChatOrchestrator {
             .map(sc -> CompletableFuture.supplyAsync(() -> answerFor(sc, message)))
             .toList();
         return futures.stream().map(CompletableFuture::join).toList();
+    }
+
+    public List<SeniorAnswer> orchestrate(String message, String excludeSeniorId,
+                                          String seniorId, String userId) {
+        if (seniorId == null || seniorId.isBlank()) {
+            return orchestrate(message, excludeSeniorId);
+        }
+        SeniorSkill skill = requireAccessibleTarget(seniorId, userId);
+        SeniorReader.SeniorCandidate candidate = new SeniorReader.SeniorCandidate(
+            skill.id(), skill.name(), skill.school(), skill.major(), skill.year(),
+            skill.domain(), excerpt(reader.loadSkillMd(skill.id()), 280));
+        return List.of(answerFor(new ScoredCandidate(candidate, 100), message));
+    }
+
+    /** Must be called before a targeted chat request creates or mutates its session. */
+    public SeniorSkill requireAccessibleTarget(String seniorId, String userId) {
+        SeniorSkill skill = repo.findById(seniorId).orElseThrow(() ->
+            new ApiException(ErrorCode.SKILL_NOT_FOUND, "Skill 不存在: " + seniorId));
+        if (!skill.isPublic() && !skill.isOwnedBy(userId)) {
+            throw new ApiException(ErrorCode.SKILL_FORBIDDEN, "无权调用该私有 Skill");
+        }
+        return skill;
     }
 
     @SuppressWarnings("unchecked")
@@ -221,6 +245,11 @@ public class ChatOrchestrator {
     private static String truncate(String text, int max) {
         if (text == null) return "";
         return text.length() > max ? text.substring(0, max) + "\n[Skill 内容已截断]" : text;
+    }
+
+    private static String excerpt(String text, int max) {
+        if (text == null) return "";
+        return text.length() > max ? text.substring(0, max) : text;
     }
 
     public String serialize(List<SeniorAnswer> answers) {

@@ -58,7 +58,7 @@ public class CommentService {
         // 验证 post 存在
         postRepo.findById(postId).orElseThrow(() ->
             new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorCode.POST_NOT_FOUND.code()));
-        return commentRepo.listByPost(postId, Math.max(1, Math.min(limit, 50)));
+        return commentRepo.listByPost(postId, Math.max(1, Math.min(limit, 500)));
     }
 
     public void delete(String userId, String commentId) {

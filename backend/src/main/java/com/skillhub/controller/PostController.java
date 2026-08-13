@@ -45,6 +45,13 @@ public class PostController extends BaseController {
         return toSummary(p);
     }
 
+    @GetMapping("/search")
+    public Page<PostSummary> search(@RequestParam("q") String q,
+                                    @RequestParam(defaultValue = "10") int limit) {
+        List<Post> hits = postService.search(q, limit);
+        return page(hits.stream().map(this::toSummary).toList(), limit);
+    }
+
     @GetMapping("/{id}")
     public PostDetail get(@PathVariable String id) {
         Post p = postService.get(id);

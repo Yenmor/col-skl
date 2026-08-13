@@ -51,6 +51,9 @@ public class GlobalExceptionHandler {
             ServerWebExchange exchange) {
         HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
         String message = ex.getReason() != null ? ex.getReason() : status.getReasonPhrase();
+        if (ex instanceof ApiException api) {
+            return build(status, api.errorCode(), message, api.details(), exchange);
+        }
         return build(status, mapStatusToCode(status), message, null, exchange);
     }
 

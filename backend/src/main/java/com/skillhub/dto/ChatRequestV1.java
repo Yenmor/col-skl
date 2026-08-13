@@ -21,6 +21,9 @@ public class ChatRequestV1 {
     /** 可空；"换一位"时排除上次选中的学长。 */
     private String excludeSeniorId;
 
+    /** 可空；从仓库调用时锁定一个可访问的 Skill，不传则继续自动召回。 */
+    private String seniorId;
+
     public ChatRequestV1() {
     }
 
@@ -51,5 +54,13 @@ public class ChatRequestV1 {
 
     public void setExcludeSeniorId(String excludeSeniorId) {
         this.excludeSeniorId = excludeSeniorId;
+    }
+
+    public String getSeniorId() {
+        return seniorId;
+    }
+
+    public void setSeniorId(String seniorId) {
+        this.seniorId = seniorId;
     }
 }

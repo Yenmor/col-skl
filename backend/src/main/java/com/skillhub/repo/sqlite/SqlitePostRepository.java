@@ -9,8 +9,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 public class SqlitePostRepository implements PostRepository {
@@ -62,8 +64,60 @@ public class SqlitePostRepository implements PostRepository {
             }
             sql.append(")");
         }
-        sql.append(" ORDER BY created_at DESC LIMIT ?");
+        sql.append(" ORDER BY like_count DESC, created_at DESC LIMIT ?");
         args.add(limit);
+        return jdbc.query(sql.toString(), (rs, n) -> map(rs), args.toArray());
+    }
+
+    /**
+     * RAG 检索：把查询切成中文 bigram + 英文/数字词，按在标题(×3)与正文中的出现次数打分。
+     * 任一词命中即返回候选，按分数排序。这是项目内轻量检索增强（无向量库）的社区帖子通道。
+     */
+    @Override
+    public List<Post> search(String query, int limit) {
+        if (query == null || query.isBlank()) return List.of();
+        List<String> grams = new ArrayList<>();
+        String hanzi = query.replaceAll("[^\\u4e00-\\u9fa5]", "");
+        for (int i = 0; i + 1 < hanzi.length(); i++) {
+            grams.add(hanzi.substring(i, i + 2));
+        }
+        for (String w : query.toLowerCase().replaceAll("[^a-z0-9 ]", " ").split("\\s+")) {
+            if (w.length() >= 2) grams.add(w);
+        }
+        if (grams.isEmpty()) {
+            grams.add(query.trim());
+        }
+        // 去重、去 stop 字对，限量
+        Set<String> seen = new LinkedHashSet<>();
+        for (String g : grams) {
+            if (seen.size() >= 10) break;
+            if (g.length() < 2) continue;
+            seen.add(g);
+        }
+        List<String> terms = List.copyOf(seen);
+
+        StringBuilder sql = new StringBuilder("SELECT * FROM posts WHERE ");
+        List<Object> args = new ArrayList<>();
+        for (int i = 0; i < terms.size(); i++) {
+            if (i > 0) sql.append(" OR ");
+            sql.append("body LIKE ? OR title LIKE ?");
+            String like = "%" + terms.get(i) + "%";
+            args.add(like);
+            args.add(like);
+        }
+        sql.append(" ORDER BY (");
+        for (int i = 0; i < terms.size(); i++) {
+            if (i > 0) sql.append(" + ");
+            sql.append("((length(title) - length(replace(title, ?, ''))) / ?) * 3")
+               .append(" + ((length(body) - length(replace(body, ?, ''))) / ?)");
+            String t = terms.get(i);
+            args.add(t);
+            args.add(t.length());
+            args.add(t);
+            args.add(t.length());
+        }
+        sql.append(") DESC, like_count DESC LIMIT ?");
+        args.add(Math.max(1, Math.min(limit, 50)));
         return jdbc.query(sql.toString(), (rs, n) -> map(rs), args.toArray());
     }
 

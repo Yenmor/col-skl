@@ -48,6 +48,7 @@ type LayerState = {
 
 const PLANE_SIZE = 4.8
 const PLANE_THICKNESS = 0.075
+const layerCenter = (skillDomains.length - 1) / 2
 const host = ref<HTMLDivElement>()
 const route = useRoute()
 const router = useRouter()
@@ -60,6 +61,7 @@ const cursorX = ref(0)
 const cursorY = ref(0)
 const sceneMode = computed<SceneMode>(() => {
   if (route.path === '/me') return 'profile'
+  if (route.path.startsWith('/community')) return 'community'
   if (communityPhase.value === 'entering' || communityPhase.value === 'open') return 'community'
   if (communityPhase.value === 'leaving') return 'cube'
   if (route.path === '/') return homeMode.value
@@ -140,7 +142,7 @@ function createLayer(index: number) {
   landscape.position.y = PLANE_THICKNESS / 2
   group.add(landscape)
 
-  const baseY = (index - 1.5) * .82
+  const baseY = (index - layerCenter) * .82
   group.position.y = baseY
   const materials: THREE.Material[] = []
   const detailMaterials: THREE.Material[] = []
@@ -426,7 +428,7 @@ onMounted(() => {
         layer.velocity += (desiredLift - layer.lift) * delta * 42
         layer.velocity *= Math.pow(.03, delta)
         layer.lift += layer.velocity * delta
-        layer.group.position.x = damp(layer.group.position.x, (index - 1.5) * .065 + swayX, 5.8, delta)
+        layer.group.position.x = damp(layer.group.position.x, (index - layerCenter) * .065 + swayX, 5.8, delta)
         layer.group.position.y = damp(layer.group.position.y, layer.baseY + breathe + layer.lift, 6.5, delta)
         layer.group.position.z = damp(layer.group.position.z, Math.sin(index * 1.7) * .075 + swayZ, 5.8, delta)
         const flex = Math.sin(time * 1.05 + phase * 1.7) * (activeMotion ? .014 : .004)
@@ -487,9 +489,9 @@ onMounted(() => {
         const planeTarget = isExpanded ? profilePlaneTarget(index) : null
         const edgePosition = edgeTarget?.position ?? new THREE.Vector3(0, .95 - index * .59, 0)
         const planePosition = planeTarget?.position ?? edgePosition
-        const targetX = THREE.MathUtils.lerp(THREE.MathUtils.lerp((index - 1.5) * .055, edgePosition.x, positionMorph), planePosition.x, layer.expand)
+        const targetX = THREE.MathUtils.lerp(THREE.MathUtils.lerp((index - layerCenter) * .055, edgePosition.x, positionMorph), planePosition.x, layer.expand)
         const targetY = THREE.MathUtils.lerp(THREE.MathUtils.lerp(1.28 - index * .86, edgePosition.y, positionMorph), planePosition.y, layer.expand)
-        const targetZ = THREE.MathUtils.lerp(THREE.MathUtils.lerp((index - 1.5) * .16, edgePosition.z, positionMorph), planePosition.z - .12, layer.expand)
+        const targetZ = THREE.MathUtils.lerp(THREE.MathUtils.lerp((index - layerCenter) * .16, edgePosition.z, positionMorph), planePosition.z - .12, layer.expand)
         layer.group.position.x = damp(layer.group.position.x, targetX, 8, delta)
         layer.group.position.y = damp(layer.group.position.y, targetY, 8, delta)
         layer.group.position.z = damp(layer.group.position.z, targetZ, 8, delta)
@@ -503,7 +505,7 @@ onMounted(() => {
         layer.group.scale.y = damp(layer.group.scale.y, 1, 9, delta)
         layer.group.rotation.x = damp(layer.group.rotation.x, Math.PI / 2 * layer.expand, 9.5, delta)
         layer.group.rotation.y = damp(layer.group.rotation.y, 0, 9.5, delta)
-        layer.group.rotation.z = damp(layer.group.rotation.z, THREE.MathUtils.lerp((index - 1.5) * .012, 0, positionMorph), 9.5, delta)
+        layer.group.rotation.z = damp(layer.group.rotation.z, THREE.MathUtils.lerp((index - layerCenter) * .012, 0, positionMorph), 9.5, delta)
         layer.slab.scale.y = damp(layer.slab.scale.y, THREE.MathUtils.lerp(1, .44, positionMorph), 9, delta)
         const flipEntrance = smoothstep(layer.expand / .24)
         const flipSettle = smoothstep((layer.expand - .72) / .28)

@@ -1,6 +1,7 @@
 package com.skillhub.config;
 
 import com.skillhub.repo.sqlite.SqliteSchema;
+import com.skillhub.service.DemoDataSeeder;
 import com.skillhub.service.SeniorReader;
 import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.Configuration;
@@ -15,15 +16,18 @@ public class InitRunner {
 
     private final SqliteSchema schema;
     private final SeniorReader reader;
+    private final DemoDataSeeder demoData;
 
-    public InitRunner(SqliteSchema schema, SeniorReader reader) {
+    public InitRunner(SqliteSchema schema, SeniorReader reader, DemoDataSeeder demoData) {
         this.schema = schema;
         this.reader = reader;
+        this.demoData = demoData;
     }
 
     @PostConstruct
     public void init() {
         schema.init();
         reader.scanOnBoot();
+        demoData.seed();
     }
 }

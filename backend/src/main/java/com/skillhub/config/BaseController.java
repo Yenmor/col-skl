@@ -142,28 +142,28 @@ public abstract class BaseController {
      * 抛 404 + 指定 code。
      */
     protected ResponseStatusException notFound(ErrorCode code, String message) {
-        return new ResponseStatusException(HttpStatus.NOT_FOUND, message);
+        return new ApiException(code, message);
     }
 
     /**
      * 抛 401 + 指定 code。
      */
     protected ResponseStatusException unauthorized(ErrorCode code, String message) {
-        return new ResponseStatusException(HttpStatus.UNAUTHORIZED, message);
+        return new ApiException(code, message);
     }
 
     /**
      * 抛 400 + 指定 code。
      */
     protected ResponseStatusException badRequest(ErrorCode code, String message) {
-        return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+        return new ApiException(code, message);
     }
 
     /**
      * 抛 503 + 指定 code。
      */
     protected ResponseStatusException serviceUnavailable(ErrorCode code, String message) {
-        return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, message);
+        return new ApiException(code, message);
     }
 
     /**

@@ -39,7 +39,7 @@ python scripts\test_metaskill.py
 
 ## Structure
 
-- `frontend/src/main.ts` mounts Vue + Pinia + Router; routes in `frontend/src/router/index.ts`. `domain.ts` defines the four directions (学习/科研/竞赛/技能) — names, colors, aliases used for filtering/inference everywhere.
+- `frontend/src/main.ts` mounts Vue + Pinia + Router; routes in `frontend/src/router/index.ts`. `domain.ts` defines the five layers (学习/科研/竞赛/技能 + `custom` 自定义层，localStorage 持久化) — names, colors, aliases used for filtering/inference everywhere; `skillFit.ts` computes the five-axis trust polygon + task fit.
 - Backend entrypoint `SkillHubApplication`; controllers expose APIs, `service/ChatOrchestrator` owns chat orchestration + prompt assembly, `repo/sqlite/` is the persistence layer.
 - `preproducts/metaskills/community-experience-distiller/` is the Skill-distillation metaskill (own scripts + own test suite); it generates the seven-file bundles under `backend/data/seniors/<id>/`.
 - `CLAUDE.md` exists but is stale (describes an older top-3/mock architecture); trust this file and the code over it.
@@ -64,6 +64,7 @@ python scripts\test_metaskill.py
 - `POST /api/chat` `{message, sessionId?, excludeSeniorId?}` → `{sessionId, answers[]}`; answers: `seniorId, name, school, major, year, content`.
 - `GET /api/seniors?domain=&school=` → `{items, facets}`; `GET /api/seniors/:id`; `POST /api/seniors/upload` (multipart `file`); `GET /api/seniors/:id/avatar?file=`.
 - **Community real API is v1**: `GET /api/v1/posts` (accepts comma-separated `domain` multi-value, e.g. `学习,保研,选课,生活,教育`), `POST /api/v1/posts`, `/api/v1/posts/:id/comments`, `/api/v1/posts/:id/like`. The old `/api/community/posts` reads the empty deprecated `community_posts` table — do not use it.
+- `GET /api/v1/posts/search?q=&limit=` is the community-post RAG endpoint: query is split into Chinese bigrams + English words, scored by occurrence count (title ×3), implemented in `SqlitePostRepository.search` (plain SQLite LIKE, no vector store). The static `/search` route beats `/posts/{id}` in Spring route matching.
 - DB has two post tables: `posts`/`post_comments` (real data) and `community_posts` (deprecated, empty). `CommunityView.vue` uses `postsApi` from `services/api-v1.ts` directly; `communityService.ts` and `communityStore.ts` are dead code.
 
 ## UI gotchas (style.css owns all custom CSS)

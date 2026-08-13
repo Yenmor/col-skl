@@ -2,6 +2,8 @@ package com.skillhub.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skillhub.dto.SkillRecallItem;
+import com.skillhub.model.SeniorSkill;
+import com.skillhub.repo.SeniorSkillRepository;
 import com.skillhub.service.SeniorReader.SeniorCandidate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,10 +37,12 @@ public class SkillRecallService {
     private static final Logger LOG = LoggerFactory.getLogger(SkillRecallService.class);
 
     private final SeniorReader reader;
+    private final SeniorSkillRepository repo;
     private final ObjectMapper json = new ObjectMapper();
 
-    public SkillRecallService(SeniorReader reader) {
+    public SkillRecallService(SeniorReader reader, SeniorSkillRepository repo) {
         this.reader = reader;
+        this.repo = repo;
     }
 
     public List<SkillRecallItem> recall(String query, int topK, String domain, String school) {
@@ -82,6 +86,40 @@ public class SkillRecallService {
                 s.tags
             ))
             .toList();
+    }
+
+    /** Same scorer, restricted to a user's owned skills for profile recommendations when needed. */
+    public List<SkillRecallItem> recallAccessible(String query, int topK, String domain,
+                                                  String school, String userId) {
+        List<SkillRecallItem> publicItems = recall(query, Math.max(topK, 20), domain, school);
+        if (userId == null || userId.isBlank()) return publicItems.stream().limit(topK).toList();
+        Set<String> seen = new HashSet<>();
+        List<SkillRecallItem> out = new ArrayList<>();
+        for (SkillRecallItem item : publicItems) {
+            if (seen.add(item.seniorId())) out.add(item);
+        }
+        for (SeniorSkill skill : repo.listOwned(userId)) {
+            if (skill.isPublic() || (domain != null && !domain.isBlank() && !domain.equals(skill.domain()))) continue;
+            double score = Math.min(1.0, tokenOverlap(query, skill) / 20.0);
+            if (seen.add(skill.id())) {
+                out.add(new SkillRecallItem(skill.id(), score,
+                    "[" + skill.name() + "] " + safe(skill.summary()), skill.tags()));
+            }
+        }
+        out.sort((a, b) -> Double.compare(b.score(), a.score()));
+        return out.stream().limit(Math.max(1, Math.min(topK, 20))).toList();
+    }
+
+    private int tokenOverlap(String query, SeniorSkill skill) {
+        Set<String> q = tokenize(query);
+        Set<String> candidate = new HashSet<>(tokenize(safe(skill.name()) + " "
+            + safe(skill.domain()) + " " + safe(skill.summary())));
+        skill.tags().forEach(tag -> candidate.addAll(tokenize(tag)));
+        return jaccard(q, candidate);
+    }
+
+    private static String safe(String value) {
+        return value == null ? "" : value;
     }
 
     @SuppressWarnings("unchecked")

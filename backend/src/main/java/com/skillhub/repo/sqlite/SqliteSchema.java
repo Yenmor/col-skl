@@ -67,6 +67,66 @@ public class SqliteSchema {
         """);
         jdbc.execute("CREATE INDEX IF NOT EXISTS idx_chat_session_created ON chat_messages(session_id, created_at DESC)");
 
+        // Skill v1 metadata. Existing rows stay public and keep their original timestamps.
+        ensureColumn("senior_skills", "owner_id", "TEXT");
+        ensureColumn("senior_skills", "visibility", "TEXT NOT NULL DEFAULT 'PUBLIC'");
+        ensureColumn("senior_skills", "layer_id", "TEXT");
+        ensureColumn("senior_skills", "summary", "TEXT");
+        ensureColumn("senior_skills", "version", "TEXT NOT NULL DEFAULT 'v1'");
+        ensureColumn("senior_skills", "tags_json", "TEXT NOT NULL DEFAULT '[]'");
+        ensureColumn("senior_skills", "updated_at", "TEXT");
+        jdbc.update("UPDATE senior_skills SET visibility='PUBLIC' WHERE visibility IS NULL OR TRIM(visibility)='' ");
+        jdbc.update("UPDATE senior_skills SET version='v1' WHERE version IS NULL OR TRIM(version)='' ");
+        jdbc.update("UPDATE senior_skills SET tags_json='[]' WHERE tags_json IS NULL OR TRIM(tags_json)='' ");
+        jdbc.update("UPDATE senior_skills SET updated_at=created_at WHERE updated_at IS NULL OR TRIM(updated_at)='' ");
+        jdbc.execute("CREATE INDEX IF NOT EXISTS idx_skills_visibility_updated ON senior_skills(visibility, updated_at DESC)");
+        jdbc.execute("CREATE INDEX IF NOT EXISTS idx_skills_owner_updated ON senior_skills(owner_id, updated_at DESC)");
+
+        // Explainable Skill trust evidence. Keep source confirmation, platform checks,
+        // and community adoption as separate facts so popularity cannot impersonate verification.
+        jdbc.execute("""
+            CREATE TABLE IF NOT EXISTS skill_trust_facts (
+              skill_id TEXT PRIMARY KEY,
+              source_confirmed INTEGER NOT NULL DEFAULT 0,
+              source_authorized INTEGER NOT NULL DEFAULT 0,
+              source_note TEXT,
+              authority_channels_json TEXT NOT NULL DEFAULT '[]',
+              ai_score INTEGER,
+              ai_model TEXT,
+              ai_note TEXT,
+              demo INTEGER NOT NULL DEFAULT 0,
+              updated_at TEXT NOT NULL
+            )
+        """);
+        jdbc.execute("""
+            CREATE TABLE IF NOT EXISTS skill_likes (
+              user_id TEXT NOT NULL,
+              skill_id TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              PRIMARY KEY (user_id, skill_id)
+            )
+        """);
+        jdbc.execute("CREATE INDEX IF NOT EXISTS idx_skill_likes_skill ON skill_likes(skill_id)");
+        jdbc.execute("""
+            CREATE TABLE IF NOT EXISTS skill_download_events (
+              id TEXT PRIMARY KEY,
+              skill_id TEXT NOT NULL,
+              user_id TEXT,
+              created_at TEXT NOT NULL
+            )
+        """);
+        jdbc.execute("CREATE INDEX IF NOT EXISTS idx_skill_downloads_skill ON skill_download_events(skill_id, created_at DESC)");
+        jdbc.execute("""
+            CREATE TABLE IF NOT EXISTS skill_comments (
+              id TEXT PRIMARY KEY,
+              skill_id TEXT NOT NULL,
+              user_id TEXT,
+              body TEXT NOT NULL,
+              created_at TEXT NOT NULL
+            )
+        """);
+        jdbc.execute("CREATE INDEX IF NOT EXISTS idx_skill_comments_skill ON skill_comments(skill_id, created_at DESC)");
+
         // ----- v1 表 -----
 
         // users（D1 匿名 cookie UUID）

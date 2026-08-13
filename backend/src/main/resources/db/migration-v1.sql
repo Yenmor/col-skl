@@ -205,3 +205,12 @@ CREATE INDEX IF NOT EXISTS idx_fragments_kind   ON senior_fragments(senior_id, k
 -- =============================================================================
 -- End of migration-v1.sql
 -- =============================================================================
+
+-- senior_skills additive v1 metadata (executed defensively by SqliteSchema):
+-- ALTER TABLE senior_skills ADD COLUMN owner_id TEXT;
+-- ALTER TABLE senior_skills ADD COLUMN visibility TEXT NOT NULL DEFAULT 'PUBLIC';
+-- ALTER TABLE senior_skills ADD COLUMN layer_id TEXT;
+-- ALTER TABLE senior_skills ADD COLUMN summary TEXT;
+-- ALTER TABLE senior_skills ADD COLUMN version TEXT NOT NULL DEFAULT 'v1';
+-- ALTER TABLE senior_skills ADD COLUMN tags_json TEXT NOT NULL DEFAULT '[]';
+-- ALTER TABLE senior_skills ADD COLUMN updated_at TEXT;

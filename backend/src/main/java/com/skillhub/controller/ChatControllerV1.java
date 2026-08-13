@@ -49,9 +49,18 @@ public class ChatControllerV1 extends BaseController {
         if (req.getMessage() == null || req.getMessage().isBlank()) {
             throw badRequest(com.skillhub.dto.ErrorCode.CHAT_EMPTY_MESSAGE, "消息为空");
         }
+        if (req.getSeniorId() != null && !req.getSeniorId().isBlank()) {
+            orchestrator.requireAccessibleTarget(req.getSeniorId(), userId);
+        }
         String sessionId = (req.getSessionId() == null || req.getSessionId().isBlank())
             ? UUID.randomUUID().toString()
             : req.getSessionId();
+
+        sessionRepo.findById(sessionId).ifPresent(existing -> {
+            if (!userId.equals(existing.userId())) {
+                throw notFound(com.skillhub.dto.ErrorCode.CHAT_SESSION_NOT_FOUND, "会话不存在");
+            }
+        });
 
         sessionRepo.upsert(new ChatSession(
             sessionId, userId, truncateTitle(req.getMessage()),
@@ -65,7 +74,8 @@ public class ChatControllerV1 extends BaseController {
             Instant.now()
         ));
 
-        List<ChatOrchestrator.SeniorAnswer> answers = orchestrator.orchestrate(req.getMessage(), req.getExcludeSeniorId());
+        List<ChatOrchestrator.SeniorAnswer> answers = orchestrator.orchestrate(
+            req.getMessage(), req.getExcludeSeniorId(), req.getSeniorId(), userId);
 
         if (!answers.isEmpty()) {
             chatRepo.save(new ChatMessageEntity(

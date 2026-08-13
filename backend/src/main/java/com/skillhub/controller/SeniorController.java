@@ -8,10 +8,11 @@ import com.skillhub.service.SeniorReader;
 import org.springframework.core.io.PathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
+import reactor.core.publisher.Mono;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -37,7 +38,7 @@ public class SeniorController {
     @GetMapping
     public Map<String, Object> list(@RequestParam(required = false) String domain,
                                     @RequestParam(required = false) String school) {
-        List<SeniorSkill> items = repo.list(empty(domain), empty(school));
+        List<SeniorSkill> items = repo.listPublic(empty(domain), empty(school), null);
         // 同一个角度两个值（domain 集合）抽出来做 facet
         Set<String> domains = items.stream().map(SeniorSkill::domain).collect(java.util.stream.Collectors.toSet());
         Set<String> schools = items.stream().map(SeniorSkill::school).collect(java.util.stream.Collectors.toSet());
@@ -49,19 +50,23 @@ public class SeniorController {
 
     @GetMapping("/{id}")
     public SeniorSkillDetail detail(@PathVariable String id) {
+        SeniorSkill publicSkill = repo.findById(id).filter(SeniorSkill::isPublic)
+            .orElseThrow(() -> new java.util.NoSuchElementException("未找到学长.Skill: " + id));
         return reader.loadDetail(id);
     }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public Map<String, Object> upload(@RequestPart("file") MultipartFile file) {
-        String id = ingest.upload(file);
-        SeniorSkill saved = reader.ingestIfValid(reader.seniorsDir().resolve(id));
-        return Map.of("id", id, "saved", saved != null);
+    public Mono<Map<String, Object>> upload(@RequestPart("file") FilePart file) {
+        return ingest.uploadPublic(file, null)
+            .map(saved -> Map.of("id", saved.id(), "saved", true));
     }
 
     @GetMapping("/{id}/avatar")
     public ResponseEntity<Resource> avatar(@PathVariable String id,
                                            @RequestParam(defaultValue = "avatar.svg") String file) {
+        if (repo.findById(id).filter(SeniorSkill::isPublic).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
         // 先看 meta.avatar，没有就回头在 seniors/<id>/ 下查找 file= 参数
         Path p = reader.avatarPath(id, file);
         if (p == null) {

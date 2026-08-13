@@ -28,9 +28,9 @@
         <div v-if="loading" class="feed-skeleton"><span v-for="n in 4" :key="n" /></div>
         <div v-else-if="posts.length === 0" class="feed-empty">还没有帖子，来发第一帖吧。</div>
         <div v-else class="post-list">
-          <article v-for="(post, index) in posts" :key="post.id" class="post-card">
+          <article v-for="post in posts" :key="post.id" class="post-card">
             <div class="post-author-row">
-              <span class="author-dot" :style="{ background: index % 2 ? activeDomain.ink : activeDomain.color }">{{ (post.authorName || '?').slice(0, 1) }}</span>
+              <img class="author-avatar" :src="avatarFor(post.authorId)" :alt="post.authorName || '用户'" @error="onAvatarError" />
               <span><strong>{{ post.authorName }}</strong><small>{{ relativeTime(post.createdAt) }}<template v-if="post.domain"> · {{ post.domain }}</template></small></span>
               <button type="button" aria-label="更多操作"><MoreHorizontal :size="18" /></button>
             </div>
@@ -73,7 +73,7 @@
         </div>
         <div class="modal-content">
           <div class="modal-author">
-            <div class="avatar large" :style="{ background: activeDomain.color }">{{ (detailPost.authorName || '?').charAt(0) }}</div>
+            <img class="avatar large" :src="avatarFor(detailPost.authorId)" :alt="detailPost.authorName" @error="onAvatarError" />
             <div>
               <div class="modal-author-name">{{ detailPost.authorName }}</div>
               <div class="modal-time">{{ relativeTime(detailPost.createdAt) }}</div>
@@ -90,7 +90,7 @@
             <h3>评论 ({{ comments.length }})</h3>
             <div v-if="comments.length === 0" class="empty">还没有评论，第一个发言吧。</div>
             <div v-for="c in comments" :key="c.id" class="comment-item">
-              <div class="avatar small" :style="{ background: activeDomain.color }">{{ (c.authorName || '?').charAt(0) }}</div>
+              <img class="avatar small" :src="avatarFor(c.authorId)" :alt="c.authorName || '用户'" @error="onAvatarError" />
               <div class="comment-body">
                 <div class="comment-head">
                   <span class="comment-author">{{ c.authorName }}</span>
@@ -118,6 +118,7 @@ import { ArrowUpRight, ChevronLeft, Heart, MessageCircle, MoreHorizontal, X } fr
 import { postsApi, commentsApi, likesApi, usersApi } from '../services/api-v1'
 import type { PostSummary, CommentDto } from '../types/api-v1'
 import { domainById, skillDomains, type DomainId } from '../domain'
+import { avatarFor } from '../services/avatar'
 import { useAbilitySpaceStore } from '../stores/abilitySpace'
 import TopBar from '../components/common/TopBar.vue'
 
@@ -136,6 +137,16 @@ const detailPost = ref<PostSummary | null>(null)
 const comments = ref<CommentDto[]>([])
 const detailCommentText = ref('')
 
+function onAvatarError(event: Event) {
+  const img = event.target as HTMLImageElement
+  img.style.display = 'none'
+  const fallback = document.createElement('span')
+  fallback.className = 'avatar-fallback'
+  const name = img.alt || '?'
+  fallback.textContent = name.charAt(0)
+  img.parentElement?.insertBefore(fallback, img.nextSibling)
+}
+
 const fromQuery = skillDomains.find(domain => domain.id === route.query.domain || domain.name === route.query.domain)?.id
 const entryDomain = fromQuery ?? 'study'
 if (phase.value === 'idle') abilitySpace.beginCommunity(entryDomain)
@@ -149,6 +160,9 @@ function domainQuery(id: DomainId): string {
     research: '科研',
     competition: '竞赛',
     skills: '技能,求职,实习',
+    custom: activeDomain.value.name === '自定义'
+      ? '自定义,社团,公益,创业,交换'
+      : activeDomain.value.name,
   }
   return map[id] ?? '学习'
 }
@@ -156,7 +170,7 @@ function domainQuery(id: DomainId): string {
 async function fetchPostsForDomain() {
   loading.value = true
   try {
-    const page = await postsApi.list({ domain: domainQuery(activeId.value), limit: 40 })
+    const page = await postsApi.list({ domain: domainQuery(activeId.value), limit: 200 })
     posts.value = page.items
   } catch {
     posts.value = []
@@ -238,7 +252,7 @@ async function openPost(post: PostSummary) {
     detailPost.value = { ...post, excerpt: detail.body || post.excerpt }
   } catch { /* 用 excerpt */ }
   try {
-    comments.value = await commentsApi.list(post.id, { limit: 50 })
+    comments.value = await commentsApi.list(post.id, { limit: 300 })
   } catch {
     comments.value = []
   }

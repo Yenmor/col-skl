@@ -59,6 +59,7 @@
         <ChatComposer
           compact
           :loading="loading"
+          :draft="questionDraft"
           :context="activeDomain.name"
           :context-color="activeDomain.color"
           :placeholder="messages.length ? '继续追问，或描述一个新的真实任务' : placeholder"
@@ -105,6 +106,8 @@ const { messages } = storeToRefs(chat)
 const { activeId, homeMode, communityPhase } = storeToRefs(abilitySpace)
 const loading = computed(() => chat.loading)
 const scrollEl = ref<HTMLElement>()
+const questionDraft = ref('')
+const targetSeniorId = ref<string>()
 const activeDomain = computed(() => domainById(activeId.value))
 const CUBE_IDLE_TIMEOUT = 5000
 const activityEvents = ['pointerdown', 'pointermove', 'wheel', 'keydown', 'touchstart'] as const
@@ -141,6 +144,9 @@ watch([homeMode, communityPhase], scheduleCubeIdleReturn, { flush: 'post' })
 watch(messages, () => scrollBottom(), { deep: true })
 
 onMounted(() => {
+  questionDraft.value = sessionStorage.getItem('skillslab:question-draft') ?? ''
+  targetSeniorId.value = sessionStorage.getItem('skillslab:senior-id') ?? undefined
+  sessionStorage.removeItem('skillslab:question-draft')
   if (communityPhase.value === 'idle' && !messages.value.length) abilitySpace.showChat()
   activityEvents.forEach(event => window.addEventListener(event, noteCubeActivity, { passive: true }))
   scheduleCubeIdleReturn()
@@ -162,6 +168,8 @@ function scrollBottom() {
 
 function resetConversation() {
   chat.reset()
+  targetSeniorId.value = undefined
+  sessionStorage.removeItem('skillslab:senior-id')
   abilitySpace.showChat()
 }
 
@@ -169,6 +177,9 @@ async function ask(text: string) {
   if (loading.value || !text.trim()) return
   const inferred = inferDomain(text)
   abilitySpace.select(inferred.id)
-  await chat.send(text)
+  const seniorId = targetSeniorId.value
+  targetSeniorId.value = undefined
+  sessionStorage.removeItem('skillslab:senior-id')
+  await chat.send(text, seniorId)
 }
 </script>

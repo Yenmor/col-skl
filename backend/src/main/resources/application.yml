@@ -18,6 +18,8 @@ spring:
       mode: never
 
 skillhub:
+  demo-data:
+    enabled: ${SKILLHUB_DEMO_DATA:true}
   seniors-dir: ${user.dir}/data/seniors
   allow-zip-upload: true
   llm:

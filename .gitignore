@@ -25,3 +25,7 @@
 .idea/
 .playwright-cli/
 output/
+
+# Session exports and third-party merge snapshots
+session-*.md
+合并对象/

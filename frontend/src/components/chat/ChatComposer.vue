@@ -58,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { ChevronDown } from '@lucide/vue'
 import { skillDomains, type DomainId } from '../../domain'
 
@@ -68,6 +68,7 @@ const props = defineProps<{
   compact?: boolean
   context?: string
   contextColor?: string
+  draft?: string
 }>()
 
 const emit = defineEmits<{
@@ -77,6 +78,10 @@ const emit = defineEmits<{
 
 const text = ref('')
 const menuOpen = ref(false)
+
+watch(() => props.draft, value => {
+  if (value && !text.value) text.value = value
+}, { immediate: true })
 
 function submit() {
   if (!text.value.trim() || props.loading) return

@@ -35,7 +35,7 @@ interface BuildingDescriptor {
 }
 
 interface MapLayout {
-  motif: 'steps' | 'orbit' | 'stage' | 'circuit'
+  motif: 'steps' | 'orbit' | 'stage' | 'circuit' | 'compass'
   paths: Array<[number, number, number, number, number]>
   buildings: BuildingDescriptor[]
   trees: Array<[number, number, number]>
@@ -81,6 +81,16 @@ export const mapLayouts: MapLayout[] = [
       { x: 1.08, z: .86, w: .62, d: .62, h: 1.34, form: 'tower', roofForm: 'pyramid' },
     ],
     trees: [[-1.58, .78, 1], [-1.36, 1.3, 0], [.28, 1.52, 0], [1.56, .1, 1], [-.2, -1.5, 0]],
+  },
+  {
+    motif: 'compass',
+    paths: [[-1.82, 0, 1.82, 0, .12], [0, -1.72, 0, 1.64, .12], [-1.42, -1.22, 1.34, 1.18, .1]],
+    buildings: [
+      { x: -1.08, z: -.82, w: .92, d: .7, h: .72, form: 'box', roofForm: 'pyramid' },
+      { x: .82, z: -.86, w: 1.04, d: .66, h: .58, form: 'box' },
+      { x: .94, z: .9, w: .56, d: .56, h: 1.3, form: 'tower', roofForm: 'pyramid' },
+    ],
+    trees: [[-1.56, .72, 0], [-1.24, 1.3, 1], [.1, 1.52, 0], [1.54, .18, 1], [-.3, -1.5, 0]],
   },
 ]
 
@@ -166,9 +176,12 @@ function createSymbol(domain: SkillDomain, index: number, maxAnisotropy: number)
   } else if (domain.id === 'competition') {
     context.beginPath(); context.moveTo(158, 26); context.lineTo(238, 90); context.lineTo(158, 154); context.lineTo(78, 90); context.closePath(); context.stroke()
     context.beginPath(); context.moveTo(158, 26); context.lineTo(158, 154); context.stroke()
-  } else {
+  } else if (domain.id === 'skills') {
     ;[[86, 104], [158, 54], [230, 108]].forEach(([x, y]) => { context.beginPath(); context.arc(x, y, 15, 0, Math.PI * 2); context.fill() })
     context.beginPath(); context.moveTo(98, 94); context.lineTo(146, 64); context.lineTo(218, 98); context.stroke()
+  } else {
+    context.beginPath(); context.arc(158, 90, 58, 0, Math.PI * 2); context.stroke()
+    context.beginPath(); context.moveTo(158, 26); context.lineTo(177, 82); context.lineTo(230, 90); context.lineTo(177, 98); context.lineTo(158, 154); context.lineTo(139, 98); context.lineTo(86, 90); context.lineTo(139, 82); context.closePath(); context.stroke()
   }
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
@@ -271,7 +284,7 @@ function createMotif(domain: SkillDomain, layout: MapLayout) {
       outlineMesh(light, domain, .94)
       motif.add(light)
     })
-  } else {
+  } else if (layout.motif === 'circuit') {
     ;[[-1.88, -.62], [-.32, -.62], [-.32, .5], [.82, .5], [1.78, .5]].forEach(([x, z], index) => {
       const radius = index === 2 ? .16 : .1
       const node = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, .06, 18), monoMaterial(domain, { deep: true, opacity: .62, emissiveIntensity: .09, metalness: .12 }))
@@ -281,6 +294,15 @@ function createMotif(domain: SkillDomain, layout: MapLayout) {
       motif.add(node)
     })
     addBar(motif, -1.58, 1.18, .1, .1, 1.15, domain, 5)
+  } else {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(.7, .03, 7, 40), monoMaterial(domain, { deep: true, opacity: .48, emissiveIntensity: .04 }))
+    ring.rotation.x = Math.PI / 2
+    ring.position.y = .076
+    outlineMesh(ring, domain, .72)
+    motif.add(ring)
+    ;[[0, -.88, .14, .46], [.88, 0, .46, .14], [0, .88, .14, .46], [-.88, 0, .46, .14]].forEach(([x, z, width, depth], index) => {
+      addBar(motif, x, z, width, depth, .12 + index * .03, domain, index + 1, index % 2 ? Math.PI / 4 : 0)
+    })
   }
   return motif
 }

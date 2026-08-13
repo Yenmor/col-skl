@@ -1,6 +1,11 @@
 package com.skillhub.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.skillhub.dto.SkillDetailResponse;
+import com.skillhub.dto.SkillSourcesSummary;
+import com.skillhub.dto.SkillSummary;
+import com.skillhub.dto.SkillTrust;
 import com.skillhub.model.SeniorSkill;
 import com.skillhub.model.SeniorSkillDetail;
 import com.skillhub.repo.SeniorSkillRepository;
@@ -21,19 +26,21 @@ import java.util.stream.Stream;
 @Service
 public class SeniorReader {
 
-    private static final Set<String> REQUIRED_FILES = Set.of(
+    public static final Set<String> REQUIRED_FILES = Set.of(
         "SKILL.md", "manifest.json", "meta.json",
         "work.md", "persona.md", "work_skill.md", "persona_skill.md"
     );
 
     private final Path seniorsDir;
     private final SeniorSkillRepository repo;
-    private final ObjectMapper json = new ObjectMapper();
+    private final ObjectMapper json;
 
     public SeniorReader(@Value("${skillhub.seniors-dir}") String seniorsPath,
-                         SeniorSkillRepository repo) {
+                         SeniorSkillRepository repo,
+                         ObjectMapper json) {
         this.seniorsDir = Paths.get(seniorsPath);
         this.repo = repo;
+        this.json = json;
     }
 
     public void scanOnBoot() {
@@ -58,6 +65,10 @@ public class SeniorReader {
     }
 
     public SeniorSkill ingestIfValid(Path dir) {
+        return ingestIfValid(dir, null, null);
+    }
+
+    public SeniorSkill ingestIfValid(Path dir, String ownerId, String visibility) {
         String id = dir.getFileName().toString();
         if (!REQUIRED_FILES.stream().allMatch(f -> Files.exists(dir.resolve(f)))) {
             return null;
@@ -85,6 +96,21 @@ public class SeniorReader {
             String source = String.valueOf(manifest.getOrDefault("source", "manual"));
             if (source == null || source.isBlank() || "null".equals(source)) source = "manual";
 
+            SeniorSkill existing = repo.findById(id).orElse(null);
+            String resolvedOwner = ownerId != null ? ownerId
+                : value(manifest, "ownerId", value(meta, "owner_id",
+                    value(identity, "user_id", existing == null ? null : existing.ownerId())));
+            String bundleVisibility = value(manifest, "visibility",
+                value(meta, "visibility", null));
+            String resolvedVisibility = visibility != null ? visibility
+                : bundleVisibility != null ? bundleVisibility
+                : existing == null ? SeniorSkill.PUBLIC : existing.visibility();
+            String summary = value(manifest, "description", existing == null ? "" : existing.summary());
+            String version = value(manifest, "version", existing == null ? "v1" : existing.version());
+            String layerId = value(manifest, "layerId", value(manifest, "layer_id",
+                existing == null ? domainToLayer(value(manifest, "domain", "")) : existing.layerId()));
+            List<String> tags = stringList(manifest.get("triggers"));
+            Instant now = Instant.now();
             SeniorSkill s = new SeniorSkill(
                 id,
                 String.valueOf(manifest.getOrDefault("name", id)),
@@ -94,7 +120,14 @@ public class SeniorReader {
                 String.valueOf(manifest.getOrDefault("domain", "")),
                 avatar,
                 source,
-                Instant.now()
+                existing == null ? now : existing.createdAt(),
+                resolvedOwner,
+                resolvedVisibility,
+                layerId,
+                summary,
+                version,
+                tags,
+                now
             );
             return repo.save(s);
         } catch (IOException e) {
@@ -117,9 +150,93 @@ public class SeniorReader {
         );
     }
 
+    public SkillDetailResponse loadV1Detail(String id, String userId) {
+        SeniorSkill skill = repo.findAccessibleById(id, userId).orElseThrow(() ->
+            new NoSuchElementException("未找到 Skill: " + id));
+        Path dir = checkedSkillDir(id);
+        SkillSummary summary = SkillSummary.from(skill, trustFor(id));
+        return SkillDetailResponse.from(
+            summary,
+            readText(dir, "SKILL.md"),
+            readText(dir, "work.md"),
+            readText(dir, "persona.md"),
+            readJson(dir, "manifest.json"),
+            readJson(dir, "meta.json"),
+            sourcesSummary(dir));
+    }
+
+    public SkillTrust trustFor(String id) {
+        Path dir = checkedSkillDir(id);
+        String skill = readText(dir, "SKILL.md");
+        JsonNode manifest = readJson(dir, "manifest.json");
+        JsonNode meta = readJson(dir, "meta.json");
+        SkillSourcesSummary sources = sourcesSummary(dir);
+
+        int packageScore = (int) Math.round(REQUIRED_FILES.stream()
+            .filter(name -> Files.isRegularFile(dir.resolve(name)))
+            .count() * 100.0 / REQUIRED_FILES.size());
+        int sourceScore = 0;
+        if (sources.available()) {
+            int base = "PLATFORM_VERIFIED".equals(sources.verification()) ? 35 : 15;
+            int ceiling = "PLATFORM_VERIFIED".equals(sources.verification()) ? 100 : 60;
+            sourceScore = Math.min(ceiling,
+                base + sources.mappingCount() * 8 + Math.min(30, sources.threadCount() * 10));
+        }
+        int methodParts = countPresent(skill, List.of("## 运行契约", "## 执行流程", "## 决策节点"));
+        int methodScore = Math.min(100, methodParts * 25 + Math.min(25, countNumberedSteps(skill) * 5));
+        int boundaryHits = countContains(skill, List.of("## 能力边界", "不知道", "不适用", "核对", "不确定", "风险"));
+        int boundaryScore = Math.min(100, boundaryHits * 18);
+
+        int campusSignals = 0;
+        String corpus = skill + "\n" + manifest.toString() + "\n" + meta.toString();
+        for (String signal : List.of("学校", "学院", "专业", "课程", "年级", "校园", "大学", "保研", "竞赛", "科研")) {
+            if (corpus.contains(signal)) campusSignals++;
+        }
+        if (!meta.path("identity").path("school").asText("").isBlank()) campusSignals += 2;
+        if (!meta.path("identity").path("major").asText("").isBlank()) campusSignals += 2;
+        int campusScore = Math.min(100, campusSignals * 9);
+        int overall = (campusScore + sourceScore + methodScore + boundaryScore + packageScore) / 5;
+        return new SkillTrust(campusScore, sourceScore, methodScore, boundaryScore, packageScore, overall);
+    }
+
+    public SkillSourcesSummary sourcesSummary(String id) {
+        return sourcesSummary(checkedSkillDir(id));
+    }
+
+    private SkillSourcesSummary sourcesSummary(Path dir) {
+        Path path = dir.resolve("sources.json");
+        if (!Files.isRegularFile(path)) {
+            return new SkillSourcesSummary(false, 0, 0, List.of(), "sources.json 缺失", "MISSING");
+        }
+        JsonNode root = readJson(dir, "sources.json");
+        if (root.isMissingNode() || root.isNull()) {
+            return new SkillSourcesSummary(false, 0, 0, List.of(), "sources.json 无法解析", "MISSING");
+        }
+        LinkedHashSet<String> evidence = new LinkedHashSet<>();
+        LinkedHashSet<String> threads = new LinkedHashSet<>();
+        LinkedHashSet<String> mappings = new LinkedHashSet<>();
+        root.path("fragment_ids").forEach(node -> {
+            if (node.isTextual() && !node.asText().isBlank()) evidence.add(node.asText());
+        });
+        root.path("fragments").forEach(node -> {
+            String fragmentId = node.path("fragment_id").asText("");
+            String threadId = node.path("thread_id").asText("");
+            if (!fragmentId.isBlank()) evidence.add(fragmentId);
+            if (!threadId.isBlank()) threads.add(threadId);
+            if (!fragmentId.isBlank() && !threadId.isBlank()) mappings.add(fragmentId + "\u0000" + threadId);
+        });
+        if (mappings.isEmpty() || evidence.isEmpty() || threads.isEmpty()) {
+            return new SkillSourcesSummary(false, 0, 0, List.of(), "sources.json 没有有效来源映射", "MISSING");
+        }
+        String verification = "PLATFORM_VERIFIED".equals(root.path("verification").asText())
+            ? "PLATFORM_VERIFIED" : "PACKAGE_DECLARED";
+        return new SkillSourcesSummary(true, mappings.size(), threads.size(),
+            evidence.stream().limit(100).toList(), null, verification);
+    }
+
     /** 列出所有「(id, SKILL.md 摘录的 first 280 chars)」，供 LLM 选人。 */
     public List<SeniorCandidate> listCandidates() {
-        List<SeniorSkill> all = repo.list(null, null);
+        List<SeniorSkill> all = repo.listPublic(null, null, null);
         List<SeniorCandidate> out = new ArrayList<>();
         for (SeniorSkill s : all) {
             Path dir = seniorsDir.resolve(s.id());
@@ -135,12 +252,13 @@ public class SeniorReader {
     }
 
     public String loadSkillMd(String id) {
-        return readText(seniorsDir.resolve(id), "SKILL.md");
+        return readText(checkedSkillDir(id), "SKILL.md");
     }
 
     public Path avatarPath(String id, String filename) {
         if (filename == null || filename.isBlank()) return null;
-        Path p = seniorsDir.resolve(id).resolve(filename);
+        Path p = checkedSkillDir(id).resolve(filename).normalize();
+        if (!p.startsWith(checkedSkillDir(id))) return null;
         return Files.exists(p) ? p : null;
     }
 
@@ -152,6 +270,61 @@ public class SeniorReader {
         } catch (IOException e) {
             return "";
         }
+    }
+
+    public Path checkedSkillDir(String id) {
+        if (id == null || !id.matches("[a-z0-9][a-z0-9-]{1,63}")) {
+            throw new IllegalArgumentException("Skill ID 不合法");
+        }
+        Path base = seniorsDir.toAbsolutePath().normalize();
+        Path dir = base.resolve(id).normalize();
+        if (!dir.startsWith(base)) throw new IllegalArgumentException("Skill 路径不合法");
+        return dir;
+    }
+
+    private JsonNode readJson(Path dir, String name) {
+        try {
+            return json.readTree(dir.resolve(name).toFile());
+        } catch (Exception ignored) {
+            return json.missingNode();
+        }
+    }
+
+    private static int countPresent(String text, List<String> markers) {
+        return (int) markers.stream().filter(text::contains).count();
+    }
+
+    private static int countContains(String text, List<String> markers) {
+        return (int) markers.stream().filter(text::contains).count();
+    }
+
+    private static int countNumberedSteps(String text) {
+        int count = 0;
+        for (String line : text.split("\\R")) {
+            if (line.matches("\\s*\\d+[.、].+")) count++;
+        }
+        return count;
+    }
+
+    private static String value(Map<String, Object> map, String key, String fallback) {
+        Object raw = map.get(key);
+        if (raw == null) return fallback;
+        String value = raw.toString().trim();
+        return value.isBlank() || "null".equalsIgnoreCase(value) ? fallback : value;
+    }
+
+    private static List<String> stringList(Object raw) {
+        if (!(raw instanceof List<?> values)) return List.of();
+        return values.stream().filter(Objects::nonNull).map(Object::toString)
+            .map(String::trim).filter(s -> !s.isBlank()).distinct().toList();
+    }
+
+    private static String domainToLayer(String domain) {
+        if (domain == null) return null;
+        if (domain.contains("科研")) return "research";
+        if (domain.contains("竞赛")) return "competition";
+        if (domain.contains("技能") || domain.contains("求职") || domain.contains("实习")) return "skills";
+        return "study";
     }
 
     /** 给 LLM 选人用的最小投影 */

@@ -61,7 +61,12 @@ public class PostService {
     }
 
     public List<Post> list(String cursor, int limit, String authorId, String domain) {
-        return postRepo.listAfter(cursor, Math.max(1, Math.min(limit, 50)), authorId, domain);
+        return postRepo.listAfter(cursor, Math.max(1, Math.min(limit, 500)), authorId, domain);
+    }
+
+    /** 社区帖子 RAG 检索。 */
+    public List<Post> search(String query, int limit) {
+        return postRepo.search(query, Math.max(1, Math.min(limit, 50)));
     }
 
     private String excerpt(String body) {
