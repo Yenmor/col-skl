@@ -89,7 +89,7 @@ public class ChatControllerV1 extends BaseController {
         List<ChatResponseV1.Answer> mapped = answers.stream().map(a ->
             new ChatResponseV1.Answer(
                 a.seniorId(), a.name(), a.school(), a.major(),
-                a.year(), a.content()
+                a.year(), a.content(), a.domain()
             )).toList();
 
         return new ChatResponseV1(sessionId, mapped);

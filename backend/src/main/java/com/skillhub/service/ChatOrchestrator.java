@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skillhub.config.LlmProperties;
 import com.skillhub.config.ApiException;
 import com.skillhub.dto.ErrorCode;
+import com.skillhub.model.Post;
 import com.skillhub.model.SeniorSkill;
 import com.skillhub.repo.SeniorFragmentRepository;
 import com.skillhub.repo.SeniorSkillRepository;
@@ -35,6 +36,7 @@ public class ChatOrchestrator {
     private final LlmClient llm;
     private final MockLlmClient mock;
     private final LlmProperties properties;
+    private final PostService postService;
     private final ObjectMapper json = new ObjectMapper();
 
     public ChatOrchestrator(SeniorSkillRepository repo,
@@ -43,12 +45,24 @@ public class ChatOrchestrator {
                             LlmClient llm,
                             MockLlmClient mock,
                             LlmProperties properties) {
+        this(repo, reader, fragmentRepo, llm, mock, properties, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public ChatOrchestrator(SeniorSkillRepository repo,
+                            SeniorReader reader,
+                            SeniorFragmentRepository fragmentRepo,
+                            LlmClient llm,
+                            MockLlmClient mock,
+                            LlmProperties properties,
+                            PostService postService) {
         this.repo = repo;
         this.reader = reader;
         this.fragmentRepo = fragmentRepo;
         this.llm = llm;
         this.mock = mock;
         this.properties = properties;
+        this.postService = postService;
     }
 
     public List<SeniorAnswer> orchestrate(String message) {
@@ -58,9 +72,16 @@ public class ChatOrchestrator {
     public List<SeniorAnswer> orchestrate(String message, String excludeSeniorId) {
         List<SeniorReader.SeniorCandidate> candidates = reader.listCandidates();
         Set<String> msgTokens = tokenize(message);
+        Set<String> excludedIds = new HashSet<>();
+        if (excludeSeniorId != null && !excludeSeniorId.isBlank()) {
+            for (String id : excludeSeniorId.split(",")) {
+                String trimmed = id.trim();
+                if (!trimmed.isEmpty()) excludedIds.add(trimmed);
+            }
+        }
         var scored = new ArrayList<ScoredCandidate>();
         for (var c : candidates) {
-            if (excludeSeniorId != null && !excludeSeniorId.isBlank() && c.id().equals(excludeSeniorId)) {
+            if (excludedIds.contains(c.id())) {
                 continue;
             }
             int overlap = jaccard(msgTokens, tokenize(c.skillHead()));
@@ -83,7 +104,15 @@ public class ChatOrchestrator {
             return Integer.compare(b.score(), a.score());
         });
 
-        List<ScoredCandidate> selected = scored.stream().limit(1).toList();
+        List<ScoredCandidate> selected = new ArrayList<>();
+        Set<String> selectedDomains = new LinkedHashSet<>();
+        for (ScoredCandidate sc : scored) {
+            if (selected.size() >= 3) break;
+            String dom = sc.c().domain();
+            if (dom == null || dom.isBlank()) continue;
+            if (!selectedDomains.add(dom)) continue;
+            selected.add(sc);
+        }
         List<CompletableFuture<SeniorAnswer>> futures = selected.stream()
             .map(sc -> CompletableFuture.supplyAsync(() -> answerFor(sc, message)))
             .toList();
@@ -99,7 +128,9 @@ public class ChatOrchestrator {
         SeniorReader.SeniorCandidate candidate = new SeniorReader.SeniorCandidate(
             skill.id(), skill.name(), skill.school(), skill.major(), skill.year(),
             skill.domain(), excerpt(reader.loadSkillMd(skill.id()), 280));
-        return List.of(answerFor(new ScoredCandidate(candidate, 100), message));
+        return List.of(CompletableFuture
+            .supplyAsync(() -> answerFor(new ScoredCandidate(candidate, 100), message))
+            .join());
     }
 
     /** Must be called before a targeted chat request creates or mutates its session. */
@@ -150,7 +181,7 @@ public class ChatOrchestrator {
             content = mock.complete(prompt, message).block(Duration.ofSeconds(5));
         }
         return new SeniorAnswer(
-            c.id(), c.name(), c.school(), c.major(), c.year(), content
+            c.id(), c.name(), c.school(), c.major(), c.year(), content, c.domain()
         );
     }
 
@@ -183,6 +214,22 @@ public class ChatOrchestrator {
             sb.append("\n\n【相关记忆片段】\n");
             for (int i = 0; i < Math.min(memories.size(), 5); i++) {
                 sb.append("- ").append(truncate(memories.get(i), 300)).append("\n");
+            }
+        }
+
+        // ---- 论坛社区讨论 RAG：召回与用户问题相关的帖子作为背景参考 ----
+        if (postService != null) {
+            List<Post> posts = postService.search(userMessage, 5);
+            if (!posts.isEmpty()) {
+                sb.append("\n\n【论坛社区讨论（参考）】\n");
+                for (int i = 0; i < Math.min(posts.size(), 3); i++) {
+                    Post p = posts.get(i);
+                    sb.append("- 标题：").append(safe(p.title())).append("｜")
+                      .append(truncate(p.excerpt(), 120))
+                      .append("（").append(safe(p.domain())).append("，")
+                      .append(p.likeCount()).append(" 赞）\n");
+                }
+                sb.append("\n以上社区讨论内容仅作背景参考，可能不准确、不适用于你的具体情况，不要奉为圭臬，请以你自己的 Skill 经验与专业判断为准。");
             }
         }
         return sb.toString();
@@ -303,6 +350,6 @@ public class ChatOrchestrator {
 
     public record SeniorAnswer(
         String seniorId, String name, String school, String major,
-        String year, String content
+        String year, String content, String domain
     ) {}
 }

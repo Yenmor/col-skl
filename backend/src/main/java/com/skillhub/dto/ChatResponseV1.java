@@ -21,6 +21,7 @@ public record ChatResponseV1(String sessionId, List<Answer> answers) {
             String school,
             String major,
             String year,
-            String content) {
+            String content,
+            String domain) {
     }
 }

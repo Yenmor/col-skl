@@ -732,3 +732,77 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
   .ability-space-scene { transition: opacity 120ms ease, filter 120ms ease; }
   .chat-session { animation: none; }
 }
+
+/* ---------------------------------------------------------------------------
+ * 专家会审（QQ 群聊式）— 专家气泡
+ * ------------------------------------------------------------------------- */
+.panel-bubble {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 2px 12px 12px 12px;
+  background: var(--surface);
+  animation: panel-pop 0.4s ease-out both;
+}
+@keyframes panel-pop {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.panel-avatar {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--domain-color);
+  color: var(--domain-ink);
+  font-size: 13px;
+  font-weight: 800;
+  font-style: normal;
+}
+.panel-avatar img {
+  width: 32px;
+  height: 32px;
+  display: block;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.panel-body {
+  flex: 1;
+  min-width: 0;
+}
+.panel-body p {
+  margin: 0;
+  color: #314e5b;
+  font-size: 13px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.panel-head strong {
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.panel-domain {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+}

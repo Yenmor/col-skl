@@ -2,24 +2,29 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { chatApi } from '../services/api-v1';
 import { getOrCreateUserId } from '../services/api-v1';
-import type { ChatResponseV1 } from '../types/api-v1';
+import type { ChatAnswer, ChatResponseV1 } from '../types/api-v1';
 
 const SESSION_KEY = 'persist.sessionId';
+
+/** 打字机流式已隐藏暂未启用（QQ 式整条发送）；streamInto 保留不删，日后恢复改此开关即可 */
+const STREAMING_ENABLED = false;
+
+export type ExpertAnswer = {
+  seniorId: string;
+  name: string;
+  school: string;
+  major: string;
+  year: string;
+  domain: string;
+  content: string;
+};
 
 export type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   isStreaming?: boolean;
-};
-
-export type ActiveSenior = {
-  seniorId: string;
-  name: string;
-  school: string;
-  major: string;
-  year: string;
-  content: string;
+  answers?: ExpertAnswer[];
 };
 
 export const useChatStore = defineStore('chat', () => {
@@ -27,10 +32,8 @@ export const useChatStore = defineStore('chat', () => {
   const sessionId = ref<string>(loadSession());
   const loading = ref(false);
   const error = ref<string | null>(null);
-  /** 当前对话的学长（沉浸式对话的头部标识） */
-  const activeSenior = ref<ActiveSenior | null>(null);
-  /** 排除的学长（"换一位"用），本地维护 */
-  const excludedSeniorIds = ref<string[]>([]);
+  /** 本批评委（专家会审），对话头部与"换一批"使用 */
+  const activePanel = ref<ExpertAnswer[]>([]);
 
   function loadSession(): string {
     if (typeof localStorage === 'undefined') return '';
@@ -51,7 +54,12 @@ export const useChatStore = defineStore('chat', () => {
 
   function addAssistantPlaceholder() {
     const id = crypto.randomUUID();
-    messages.value.push({ id, role: 'assistant', content: '', isStreaming: true });
+    messages.value.push({
+      id,
+      role: 'assistant',
+      content: '专家会审中，请稍候…',
+      isStreaming: false,
+    });
     return id;
   }
 
@@ -74,7 +82,42 @@ export const useChatStore = defineStore('chat', () => {
     tick();
   }
 
-  /** 发送消息：可锁定指定 Skill；未指定时自动召回 top-1，回答以流式呈现 */
+  function toExpertAnswers(answers: ChatAnswer[]): ExpertAnswer[] {
+    return answers.map(a => ({
+      seniorId: a.seniorId ?? '',
+      name: a.name ?? '',
+      school: a.school ?? '',
+      major: a.major ?? '',
+      year: a.year ?? '',
+      domain: a.domain ?? '',
+      content: a.content ?? '',
+    }));
+  }
+
+  /** 每条专家消息之间的冒出间隔（ms）：像群聊里群友逐个发言 */
+  const PANEL_REVEAL_DELAY = 650;
+
+  const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+  /** 专家会审气泡逐个冒出：移除占位消息，每间隔 PANEL_REVEAL_DELAY push 一条专家消息 */
+  async function applyAnswers(pendingId: string, answers: ChatAnswer[]) {
+    const experts = toExpertAnswers(answers);
+    const index = messages.value.findIndex(m => m.id === pendingId);
+    if (index >= 0) messages.value.splice(index, 1);
+    for (let i = 0; i < experts.length; i++) {
+      if (i > 0) await sleep(PANEL_REVEAL_DELAY);
+      const expert = experts[i];
+      messages.value.push({
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: expert.content,
+        answers: [expert],
+      });
+    }
+    activePanel.value = experts;
+  }
+
+  /** 发送消息：可锁定指定 Skill；未指定时自动召回多位专家，整条 QQ 式呈现 */
   async function send(text: string, seniorId?: string) {
     if (loading.value || !text.trim()) return;
     loading.value = true;
@@ -94,20 +137,13 @@ export const useChatStore = defineStore('chat', () => {
       const answers = resp.answers ?? [];
       if (answers.length === 0) {
         const msg = messages.value.find(m => m.id === pendingId);
-        if (msg) { msg.content = '暂时没有匹配的学长，换个问法试试。'; msg.isStreaming = false; }
+        if (msg) { msg.content = '暂时没有匹配的专家，换个问法试试。'; msg.isStreaming = false; }
         return;
       }
-      const ans = answers[0];
-      activeSenior.value = {
-        seniorId: ans.seniorId,
-        name: ans.name,
-        school: ans.school,
-        major: ans.major,
-        year: ans.year,
-        content: ans.content,
-      };
-      excludedSeniorIds.value = [];
-      streamInto(pendingId, ans.content);
+      if (STREAMING_ENABLED) {
+        streamInto(pendingId, answers.map(a => a.content).join('\n'));
+      }
+      await applyAnswers(pendingId, answers);
     } catch (e) {
       const msg = messages.value.find(m => m.id === pendingId);
       if (msg) { msg.content = '暂时无法连接服务器，请稍后重试。'; msg.isStreaming = false; }
@@ -117,11 +153,10 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  /** 换一位：排除当前学长重新回答最后一个问题 */
-  async function switchSenior() {
+  /** 换一批：排除本批评委重新回答最后一个问题 */
+  async function switchPanel() {
     const lastUser = [...messages.value].reverse().find(m => m.role === 'user');
     if (!lastUser || loading.value) return;
-    const current = activeSenior.value;
 
     loading.value = true;
     const pendingId = addAssistantPlaceholder();
@@ -129,25 +164,21 @@ export const useChatStore = defineStore('chat', () => {
       const resp: ChatResponseV1 = await chatApi.send({
         message: lastUser.content,
         sessionId: sessionId.value || undefined,
-        excludeSeniorId: current?.seniorId,
+        excludeSeniorId: activePanel.value.map(a => a.seniorId).join(','),
       });
       sessionId.value = resp.sessionId;
       saveSession(resp.sessionId);
       const answers = resp.answers ?? [];
       if (answers.length === 0) {
         const msg = messages.value.find(m => m.id === pendingId);
-        if (msg) { msg.content = '没有其他匹配的学长了。'; msg.isStreaming = false; }
+        if (msg) { msg.content = '暂时没有匹配的专家，换个问法试试。'; msg.isStreaming = false; }
         return;
       }
-      const ans = answers[0];
-      activeSenior.value = {
-        seniorId: ans.seniorId, name: ans.name, school: ans.school,
-        major: ans.major, year: ans.year, content: ans.content,
-      };
-      streamInto(pendingId, ans.content);
+      await applyAnswers(pendingId, answers);
     } catch (e) {
       const msg = messages.value.find(m => m.id === pendingId);
       if (msg) { msg.content = '切换失败，请重试。'; msg.isStreaming = false; }
+      error.value = (e as Error).message;
     } finally {
       loading.value = false;
     }
@@ -157,32 +188,33 @@ export const useChatStore = defineStore('chat', () => {
     if (!sessionId.value) return;
     try {
       const rows = await chatApi.listMessages(sessionId.value, { limit: 50 });
-      messages.value = rows.reverse().map(r => {
-        let content = r.content ?? '';
-        if (!content && r.role === 'assistant' && Array.isArray(r.answers)) {
-          const answers = r.answers as Array<{
-            seniorId?: string; name?: string; school?: string;
-            major?: string; year?: string; content?: string;
-          }>;
-          if (answers.length > 0) {
-            const a = answers[0];
-            content = a.content ?? '';
-            activeSenior.value = {
-              seniorId: a.seniorId ?? '',
-              name: a.name ?? '',
-              school: a.school ?? '',
-              major: a.major ?? '',
-              year: a.year ?? '',
-              content,
-            };
-          }
+      const restored: ChatMessage[] = [];
+      let panel: ExpertAnswer[] = [];
+      for (const row of rows.reverse()) {
+        if (row.role === 'user') {
+          restored.push({ id: crypto.randomUUID(), role: 'user', content: row.content ?? '' });
+          continue;
         }
-        return {
-          id: crypto.randomUUID(),
-          role: (r.role as 'user' | 'assistant'),
-          content,
-        };
-      });
+        if (Array.isArray(row.answers) && row.answers.length > 0) {
+          const experts = (row.answers as ChatAnswer[]).map(a => ({
+            seniorId: a.seniorId ?? '',
+            name: a.name ?? '',
+            school: a.school ?? '',
+            major: a.major ?? '',
+            year: a.year ?? '',
+            domain: a.domain ?? '',
+            content: a.content ?? '',
+          }));
+          for (const expert of experts) {
+            restored.push({ id: crypto.randomUUID(), role: 'assistant', content: expert.content, answers: [expert] });
+          }
+          panel = experts;
+          continue;
+        }
+        restored.push({ id: crypto.randomUUID(), role: 'assistant', content: row.content ?? '' });
+      }
+      messages.value = restored;
+      activePanel.value = panel;
     } catch {
       // 历史拉取失败不阻塞
     }
@@ -191,13 +223,12 @@ export const useChatStore = defineStore('chat', () => {
   function reset() {
     messages.value = [];
     sessionId.value = '';
-    activeSenior.value = null;
-    excludedSeniorIds.value = [];
+    activePanel.value = [];
     if (typeof localStorage !== 'undefined') localStorage.removeItem(SESSION_KEY);
   }
 
   return {
-    messages, sessionId, loading, error, activeSenior,
-    send, switchSenior, loadHistory, reset, getOrCreateUser, addUser,
+    messages, sessionId, loading, error, activePanel,
+    send, switchPanel, loadHistory, reset, getOrCreateUser, addUser,
   };
 });

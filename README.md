@@ -61,7 +61,26 @@ $mvn = 'C:\Program Files\JetBrains\IntelliJ IDEA 2025.2.5\plugins\maven\lib\mave
 
 看到 `Netty started on port 8080` 后，后端才算启动完成。数据库会自动创建在 `backend/data/skillhub.db`。
 
-### 2. 启动前端
+首次启动时，后端会**自动迁移社区示例数据**（173 条帖子 + 7460 条评论），详见下方「社区示例数据迁移」。
+
+### 2. 社区示例数据迁移
+
+社区帖子/评论是真实贴吧内容，已由 `backend/scripts/export-community.py` 导出为
+`backend/src/main/resources/seed/community-posts.json`（约 3 MB，随代码入库，不提交 `skillhub.db` 本身）。
+
+规则：
+
+- **默认自动导入**：首次启动若数据库中没有非演示帖子，会从该 JSON 批量导入
+  （`INSERT OR IGNORE` 按 id 幂等去重，重复启动不会重复插入）。
+- **开关**：环境变量 `SKILLHUB_SEED_COMMUNITY=false` 可关闭自动导入；
+  已导入过的库再次启动会跳过（不影响已有数据）。
+- **与演示数据的关系**：`DemoDataSeeder` 硬编码的 12 条演示帖/20 条演示评论
+  是独立的另一份数据（开关 `SKILLHUB_DEMO_DATA=false` 可关），与示例数据互不覆盖。
+- **重新导出**：本地 `skillhub.db` 有更新时，运行
+  `python backend/scripts/export-community.py` 重新生成 JSON 并提交即可
+  （脚本只导出非演示数据，posts 排除 `demo-`/`peer-` 前缀，comments 排除 `demo-`/`reply-`/`peer-` 前缀）。
+
+### 3. 启动前端
 
 打开第二个 PowerShell 终端：
 

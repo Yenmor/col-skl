@@ -236,6 +236,7 @@ export type ChatAnswer = {
   major: string;
   year: string;
   content: string;
+  domain: string;
 };
 
 export type ChatResponseV1 = {
